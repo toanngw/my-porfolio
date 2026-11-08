@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cao-Toan Nguyen — Portfolio
 
-## Getting Started
+Next.js App Router, TypeScript, Tailwind CSS, and Motion. Content is sourced from `public/cv.pdf`; the portrait is `public/avatar.jpg`.
 
-First, run the development server:
+## Local development
 
-```bash
+Use a supported Node LTS release (Node 22.13+ or 24 LTS), then:
+
+```sh
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run lint
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+Deploy as a standard Next.js application to Vercel or another Node-compatible host. Build command: `npm run build`; start command: `npm start`. Vercel configures the production metadata origin automatically. On other hosts, set `SITE_URL` to the final absolute HTTPS origin before building so Open Graph URLs use the correct domain. No backend services or credentials are required.
 
-To learn more about Next.js, take a look at the following resources:
+## Content and design
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `src/app/page.tsx`: CV-supported content and section structure.
+- `src/components/`: motion, work disclosures, icons, theme control.
+- `src/app/globals.css`: semantic colors, responsive layout, typography.
+- `src/app/fonts/`: self-hosted fonts and SIL Open Font licenses.
+- `src/app/opengraph-image.tsx`: generated share image.
+- `PRODUCT.md`, `DESIGN.md`: factual constraints and design rules.
+- `docs/design-review.md`: five prioritized improvements and verification evidence.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The two selected work examples come from professional experience. No standalone personal projects or project URLs were provided. There are no fake links or public-facing placeholders.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Screenshots and browser logs are local QA artifacts under `.playwright-mcp/`; they are not deployed by Next.js.
