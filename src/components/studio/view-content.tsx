@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import { useState } from "react";
-import { motion, useIsPresent } from "motion/react";
+import { motion } from "motion/react";
 import { useReducedMotionPreference } from "@/lib/preferences";
 import { Arrow, Download } from "@/components/icons";
 import { experience, projects, skills, type View } from "@/lib/portfolio";
@@ -57,8 +57,7 @@ function Contact() {
   return <div className="contact-view"><h1 tabIndex={-1} id="view-title-contact" className="view-title">Good things start<br />with a hello<span className="warm-dot">.</span></h1><p>Have a question about my work, or something in mind? I’d be glad to hear from you.</p><a className="email-link" href="mailto:caotoan940@gmail.com"><span>caotoan940@gmail.com</span><Arrow /></a><div className="contact-links"><a className="contact-link" href="https://github.com/toanngw"><span>GitHub<span className="secondary">toanngw</span></span><Arrow /></a><a className="contact-link" href="https://www.linkedin.com/in/caotoancs/"><span>LinkedIn<span className="secondary">Cao-Toan Nguyen</span></span><Arrow /></a></div><a href="/cv.pdf" download="Cao-Toan-Nguyen-CV.pdf" className="text-link cv-link">Take a copy of my CV <Download /></a></div>;
 }
 const content: Record<View, () => React.ReactNode> = { home: Home, about: About, experience: Experience, projects: Projects, skills: Skills, contact: Contact };
-export function ViewContent({ view, animate, direction = 1 }: { view: View; animate: boolean; direction?: number }) {
-  const present = useIsPresent();
+export function ViewContent({ view }: { view: View }) {
   const Content = content[view];
-  return <motion.section className={`view-content view-${view}`} aria-labelledby={`view-title-${view}`} aria-hidden={!present} inert={!present} initial={animate ? { opacity: 0, transform: `translate3d(0,${direction * 110}px,0)` } : false} animate={{ opacity: 1, transform: "translate3d(0,0px,0)" }} exit={{ opacity: 0, transform: `translate3d(0,${animate ? direction * -80 : 0}px,0)` }} transition={{ duration: animate ? 0.65 : 0, ease: [0.22, 1, 0.36, 1] }}><Content /></motion.section>;
+  return <section className={`view-content view-${view}`} aria-labelledby={`view-title-${view}`}><Content /></section>;
 }

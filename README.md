@@ -1,54 +1,41 @@
 # Cao-Toan Nguyen — Snowlight Studio
 
-An interactive single-screen portfolio built with Next.js App Router, TypeScript, Tailwind CSS, Motion, React Three Fiber, and Drei. All professional content is sourced from `public/cv.pdf`.
+A portfolio built with Next.js App Router, TypeScript, Tailwind CSS, Motion, React Three Fiber, and Drei. Professional content comes from `public/cv.pdf`.
 
 ## Local development
-
-Use Node 22.13+ or Node 24 LTS:
 
 ```sh
 npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Navigation uses `#home`, `#about`, `#experience`, `#projects`, `#skills`, and `#contact`. Browser back/forward works without full-page reloads. Old `#work` links resolve to Projects.
+Open http://localhost:3000. The six sections use `#home`, `#about`, `#experience`, `#projects`, `#skills`, and `#contact`; old `#work` links resolve to Projects.
+
+## Verification
 
 ```sh
-npm run lint
 npx tsc --noEmit
+node scripts/verify-character-story.mjs
+node scripts/verify-scroll-detent.mjs
 npm run build
-npm start
 ```
+
+`npx next build --webpack` is also supported. `npm run lint` runs ESLint.
 
 ## Architecture
 
-- `src/app/page.tsx`: server-rendered entry and preserved SEO layout.
-- `src/components/studio/studio.tsx`: persistent app shell, hash navigation, bounded content panel.
-- `src/components/studio/view-content.tsx`: six content views and selectors.
-- `src/components/studio/workspace-scene.tsx`: original procedural 3D workspace and continuous turntable motion.
-- `src/components/studio/developer-character.tsx`: typing, coffee break, and steam choreography.
-- `src/components/studio/code-screen.tsx`: scrolling illustrative code texture.
-- `src/components/studio/sound-controls.tsx` and `src/lib/studio-audio.ts`: optional original instrumental lo-fi, navigation clicks, and volume controls.
-- `src/components/studio/workspace-stage.tsx`: dynamic client-only scene and static fallback.
-- `src/components/studio/snowfall.tsx`: lightweight dark-mode-only Canvas snowfall.
-- `src/lib/portfolio.ts`: CV-supported content.
-- `src/lib/preferences.ts`: theme, pause, and document visibility subscriptions.
-- `src/app/globals.css`: semantic theme tokens and responsive viewport layout.
+- `src/app/page.tsx`: server entry; `layout.tsx` provides metadata, the original monogram favicon, and locally hosted DM Sans.
+- `src/components/studio/studio.tsx`: persistent shell, section selection, and intro accessibility.
+- `character-story.ts`, `developer-character.tsx`, `hello-bubble.tsx`: articulated voxel rig, greeting, one-handed profile pull-up, and varied work/break cycle with a fading frustration bubble and contact-limited desk bonk. No external character model is required.
+- `cinematic-stage.tsx`: keeps the canvas mounted while the character reveals the portfolio. The keyboard skip-to-content link and reduced motion provide immediate access; loading stays visually silent, and unavailable WebGL immediately unlocks the portfolio.
+- `workspace-stage.tsx` and `workspace-scene.tsx`: transparent full-viewport rendering, lighting, responsive off-axis camera framing, unrestricted trackball rotation, and zoom. A separate layout-sized gesture surface leaves page controls and scrolling accessible while allowing artwork to render beyond its slot.
+- `scroll-navigation.tsx` and `src/lib/scroll-detent.ts`: proportional reading, progressive boundary resistance, touch momentum, keyboard navigation, and the right-edge indicator. One section is displayed at a time.
+- `viewport-atmosphere.tsx`, `atmosphere.tsx`, and `breeze.ts`: snowfall, leaves, wind, and the shared animation clock. Hidden tabs pause rendering.
+- `sound-controls.tsx`, `src/lib/music-tracks.ts`, and `src/lib/studio-audio.ts`: user-supplied music recordings and independent synthesized scrolling ticks/clacks and desk impacts. Music requests playback at 40% when the profile is revealed; if browser policy blocks it, the next permitted click or key press retries. Manual play/pause, track selection, and volume remain available. Scrolling sounds have no toggle and unlock independently with permitted user interaction. Haptics are optional device capabilities.
+- `src/lib/portfolio.ts` and `view-content.tsx`: CV-supported content and interactive experience/project selectors.
 
-The workspace stays mounted across view changes. Ambient animation follows the system reduced-motion preference by default. The motion control explicitly enables or pauses both the scene and snow, persists that choice, and always stops rendering in hidden tabs. The 3D renderer is split from the initial application bundle; its static render is visible immediately and remains available when WebGL is unsupported. The original portrait is retained beside a transparent background-removal edit. See `docs/assets.md` for provenance.
-
-Desktop uses a fixed viewport. On short screens, mobile, and enlarged layouts, only the content panel scrolls; essential content is not clipped or omitted. Navigation remains outside that panel.
+The header keeps branding, music settings, and the theme toggle. The lamp stays lit and character animations run automatically. Only DM Sans is loaded. Original portrait/reference assets and provenance are retained; see `docs/assets.md`. Mechanical scrolling details are in `docs/tactile-scrolling.md`. Other review documents record earlier iterations and are historical.
 
 ## Deployment
 
-Deploy as a standard Next.js application. Build: `npm run build`; Node start: `npm start`. On Vercel, the production origin is resolved automatically. On other hosts set `SITE_URL` to the final absolute HTTPS origin before building so social metadata uses the correct domain. No database, authentication, external model host, or API key is required at runtime.
-
-## Review evidence
-
-The latest scene, portrait, and audio verification is recorded in `docs/scene-and-sound-review.md`.
-
-`DESIGN.md`, `PRODUCT.md`, and `.impeccable/design.json` record the current system. Earlier reviews under `docs/` describe the first portfolio iteration; the Snowlight Studio review covers this redesign. Local screenshots in `.playwright-mcp/` are ignored by Git and are not deployment assets.
-
-## Sound and scene details
-
-Open the headphones control in the header and select **Play music**. Music requires this explicit gesture; it does not autoplay. Adjust Volume or turn Navigation clicks off independently. Volume zero silences both. Audio is generated locally with Web Audio, with no song files, lyrics, third-party samples, or network requests. Music stops in hidden tabs and resumes when returning if enabled. The scene makes a full rotation every 60 seconds; the original blocky developer types and takes a coffee break every 22 seconds. All scene motion shares the existing pause and reduced-motion controls. The circular portrait uses the existing transparent cutout; the original photo is untouched.
+Deploy as a standard Next.js application: build with `npm run build`, then run `npm start`. Vercel resolves the production origin automatically; elsewhere set `SITE_URL` to the final HTTPS origin before building. No database, authentication service, external model host, or API key is required at runtime.

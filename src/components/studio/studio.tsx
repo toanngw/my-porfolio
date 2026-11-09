@@ -20,15 +20,15 @@ function subscribeNavigation(callback: () => void) {
   return () => { window.removeEventListener("hashchange", callback); window.removeEventListener("popstate", callback);window.removeEventListener("popstate-scroll", callback); };
 }
 const getView = () => viewFromHash(window.location.hash);
-export function Studio({ modelUrl }: { modelUrl: string | null }) {
+export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
   const reduced = useReducedMotionPreference(),clientReady=useClientReady();
   const story=useRef(createStory()),focusAfterSkip=useRef(false);
   const [introComplete,setIntroComplete]=useState(false);
   const [navigationMotion,setNavigationMotion]=useState(false);
-  const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null);
+  const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null);
   const finish=useCallback(()=>setIntroComplete(true),[]);
-  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-intro,.skip-link");skipStory(story.current);setIntroComplete(true);},[]);
+  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link");skipStory(story.current);setIntroComplete(true);},[]);
   const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
   useEffect(()=>{if(clientReady&&reduced)skip();},[clientReady,reduced,skip]);
   useEffect(()=>{const timeout=setTimeout(()=>{if(!story.current.started)skip();},10000);return()=>clearTimeout(timeout);},[skip]);
@@ -51,19 +51,18 @@ export function Studio({ modelUrl }: { modelUrl: string | null }) {
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
     {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
-    {!introComplete&&<button className="skip-intro" onClick={skip}>Skip intro <span aria-hidden="true">↗</span></button>}
     <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell">
       <header className="app-header" inert={!introComplete}>
         <a href="#home" className="wordmark" aria-label="Cao-Toan Nguyen, Home"><Mark /><span>Cao-Toan Nguyen<span className="warm-dot">.</span></span></a>
-        <div className="header-controls"><SoundControls /><ThemeToggle /></div>
+        <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage clock={clock} modelUrl={modelUrl} story={story} onRelease={finish} onUnavailable={skip}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={skip}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
-          {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item} animate={false}/></div>)}
+          {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}
         </div><PanelContinuation panel={content} view={view} /></div>
       </main>
       <footer className="app-footer" inert={!introComplete}><span>© 2026 Cao-Toan Nguyen</span><span>Made with care, and a little winter.</span></footer>

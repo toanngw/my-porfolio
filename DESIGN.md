@@ -30,7 +30,7 @@ typography:
     lineHeight: 1.15
     letterSpacing: "-0.04em"
   headline:
-    fontFamily: "Lora, Georgia, serif"
+    fontFamily: "DM Sans, sans-serif"
     fontSize: "34px"
     fontWeight: 400
     lineHeight: 1.28
@@ -91,7 +91,7 @@ Snowlight Studio is a quiet winter workspace: an original open timber workspace,
 The persistent workspace accompanies six hash-linked views. Local typography, a transparent portrait, restrained controls, and subtle ambient movement make the setting personal without replacing the CV-backed work.
 
 **Key Characteristics:**
-- Persistent original procedural workspace with a matching static fallback.
+- Persistent original procedural workspace with no visible loading placeholder.
 - Neutral dark and ivory light themes with warm accents.
 - Compact content, quiet separators, and small rounded controls.
 - Ambient motion follows reduced motion by default; explicit Play/Pause overrides the ambient preference, and hidden tabs suspend rendering.
@@ -121,17 +121,17 @@ The palette is neutral charcoal or ivory, warmed by small timber-colored accents
 
 **Display Font:** DM Sans, locally hosted (`dm-sans.ttf`), with sans-serif fallback for the home identity.
 **Body Font:** DM Sans, locally hosted, with sans-serif fallback.
-**Editorial Font:** Lora regular and italic, locally hosted, with Georgia and serif fallbacks. Font licenses remain beside the assets.
+**Section Headings:** DM Sans with sans-serif fallback. The interface uses a single font family; its license remains beside the font asset.
 
 ### Hierarchy
 
 - **Display:** home identity uses the frontmatter display role; it becomes 41px at 1030px, 44px at 800px, and 35px at 480px.
-- **Headline:** Lora view titles use the headline role; contact uses 39px. At 480px, view titles become 29px and contact 32px.
+- **Headline:** DM Sans view titles use the headline role; contact uses 39px. At 480px, view titles become 29px and contact 32px.
 - **Title:** DM Sans section headings use the title role; tertiary headings use 14px, weight 500.
 - **Body:** body defaults to the frontmatter role; panel paragraphs use 13px, with 15px home introduction/lead. At 480px, paragraphs use 12px and home introduction/lead 13px.
 - **Label:** navigation and actions use the label role; experience dates/location, technology tags, project attribution, contact account IDs, About languages, and home location use 12px; captions use 9–10px. These are supporting text, not a reusable eyebrow system.
 
-**The Two Voices Rule.** Use DM Sans for the home identity and interface; use Lora for view titles and the studio signature.
+**The Sans-serif Rule.** Use DM Sans for the home identity, all section headings, and interface text.
 
 ## Layout
 
@@ -175,9 +175,9 @@ A small “More below” button occupies a dedicated strip below the scroll view
 
 ### Workspace and atmosphere
 
-The original procedural scene persists across views. A seamless 60-second turntable rotation reveals the open workspace from every angle. Pointer movement and arrow keys add a damped orientation offset; Escape resets that offset. An original blocky developer types, then lifts a mug for a coffee break in a 22-second cycle. Low-poly steam follows the mug; a 512×320 canvas texture scrolls illustrative code at 12 updates per second. Tree ornaments, gifts, and individual laptop keys supply detail without external assets. Touch retains vertical panning. A locally rendered image of the same original Three.js model (`public/studio-fallback.webp`) remains visible before readiness and when WebGL is unavailable. The scene is decorative context with an accessible description, never a substitute for work evidence.
+The original procedural scene persists across views. A seamless 60-second turntable rotation reveals the open workspace from every angle. Pointer movement and arrow keys add a damped orientation offset; Escape resets that offset. An original blocky developer types, then lifts a mug for a coffee break in a 22-second cycle. Low-poly steam follows the mug; a 512×320 canvas texture scrolls illustrative code at 12 updates per second. Tree ornaments, gifts, and individual laptop keys supply detail without external assets. Touch retains vertical panning. Loading stays visually silent until the current voxel scene has rendered. Unavailable WebGL unlocks the portfolio and displays a text fallback; the archived character image is never used as a loading placeholder. The scene is decorative context with an accessible description, never a substitute for work evidence.
 
-Canvas snowfall appears only in dark mode. Scene and snow share one effective motion preference: system by default, or explicit play/pause. Reduced motion freezes ambient movement by default; the user can explicitly choose Resume to enable it. Hidden tabs always suspend both loops. UI transitions still honor reduced motion independently. The scene uses demand rendering while inactive. Reduced-motion preference subscribes to media-query changes and updates during the session without a reload. View transitions use 180ms and small vertical offsets only after pointer navigation and when pause/reduced-motion settings allow; keyboard navigation is immediate. Project selection uses 160ms/4px after pointer activation and respects reduced motion. Snow visibility uses 250ms opacity and poster readiness uses 180ms; reduced motion shortens these opacity transitions to 150ms. Theme preference initializes before hydration and follows system preference until explicitly saved.
+Canvas snowfall appears only in dark mode. Scene and snow share one effective motion preference: system by default, or explicit play/pause. Reduced motion freezes ambient movement by default; the user can explicitly choose Resume to enable it. Hidden tabs always suspend both loops. UI transitions still honor reduced motion independently. The scene uses demand rendering while inactive. Reduced-motion preference subscribes to media-query changes and updates during the session without a reload. View transitions use 180ms and small vertical offsets only after pointer navigation and when pause/reduced-motion settings allow; keyboard navigation is immediate. Project selection uses 160ms/4px after pointer activation and respects reduced motion. Snow visibility uses 250ms opacity. The scene is revealed only after readiness, without a placeholder crossfade. Theme preference initializes before hydration and follows system preference until explicitly saved.
 
 ## Do's and Don'ts
 

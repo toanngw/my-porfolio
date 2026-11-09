@@ -1,6 +1,6 @@
 /** User-supplied recordings. Only embedded ID3 metadata is treated as verified. */
 export const musicTracks = [
-  { id: "andriih", src: "/audio/andriih.mp3", title: "andriih", credit: "" },
+  { id: "andriih", src: "/audio/andriih.mp3", title: "Andriih", credit: "" },
   { id: "kyoto", src: "/audio/Nebulite-Kyoto.mp3", title: "Kyoto", credit: "Nebulite" },
 ] as const;
 
