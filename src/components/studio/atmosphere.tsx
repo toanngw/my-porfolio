@@ -10,10 +10,11 @@ export function InfiniteGround({ dark }: { dark: boolean }) {
   const material = useMemo(() => {
     const surface = new MeshStandardMaterial({ color: dark ? "#111114" : "#d8d0c2", roughness: 1, transparent: true, depthWrite: false });
     surface.onBeforeCompile = shader => {
-      shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec2 groundPosition;")
-        .replace("#include <begin_vertex>", "#include <begin_vertex>\ngroundPosition = position.xy;");
-      shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 groundPosition;")
-        .replace("#include <opaque_fragment>", "diffuseColor.a *= 1.0 - smoothstep(1.0, 5.0, length(groundPosition));\n#include <opaque_fragment>");
+      shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec2 groundPosition;\nvarying vec4 groundClip;")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\ngroundPosition = position.xy;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\ngroundClip = gl_Position;");
+      shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec2 groundPosition;\nvarying vec4 groundClip;")
+        .replace("#include <opaque_fragment>", "vec2 groundUV = groundClip.xy / groundClip.w * 0.5 + 0.5;\nfloat groundEdge = min(min(groundUV.x, 1.0-groundUV.x), min(groundUV.y, 1.0-groundUV.y));\ndiffuseColor.a *= (1.0 - smoothstep(0.65, 2.1, length(groundPosition))) * smoothstep(0.0, 0.14, groundEdge);\n#include <opaque_fragment>");
     };
     return surface;
   }, [dark]);

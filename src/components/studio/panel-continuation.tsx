@@ -12,7 +12,7 @@ export function PanelContinuation({ panel, view }: { panel: RefObject<HTMLDivEle
     function measure() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
-        const active = element!.querySelector<HTMLElement>('.view-content[aria-hidden="false"]');
+        const active = element!.querySelector<HTMLElement>('.scroll-section[data-active="true"] .view-content');
         const container = element!.parentElement;
         if (!active || !container) { setMore(false); return; }
         const paddingTop = parseFloat(getComputedStyle(element!).paddingTop);
@@ -38,7 +38,7 @@ export function PanelContinuation({ panel, view }: { panel: RefObject<HTMLDivEle
     const element = panel.current;
     if (!element) return;
     element.scrollBy({ top: Math.max(100, element.clientHeight * 0.75), behavior: "auto" });
-    const active = element.querySelector<HTMLElement>('.view-content[aria-hidden="false"]');
+    const active = element.querySelector<HTMLElement>('.scroll-section[data-active="true"] .view-content');
     if (active && active.getBoundingClientRect().bottom <= element.getBoundingClientRect().bottom + 2) element.focus({ preventScroll: true });
   }}>More below <Arrow direction="down" /></button>;
 }

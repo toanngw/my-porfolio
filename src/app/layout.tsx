@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 const body = localFont({ src: "./fonts/dm-sans.ttf", variable: "--font-body", display: "swap" });
-const display = localFont({ src: [{ path: "./fonts/lora-regular.ttf", weight: "400", style: "normal" }, { path: "./fonts/lora-italic.ttf", weight: "400", style: "italic" }], variable: "--font-display", display: "swap" });
+const display = localFont({ src: "./fonts/space-grotesk.ttf", weight: "300 700", variable: "--font-display", display: "swap" });
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")),
   title: "Cao-Toan Nguyen — Software Engineer",

@@ -1,13 +1,12 @@
 "use client";
 
 import { useEffect, useRef, type RefObject } from "react";
-import { useDarkTheme, useMotionPaused, usePageVisible } from "@/lib/preferences";
+import { useDarkTheme, usePageVisible } from "@/lib/preferences";
 import { sampleBreeze, type Breeze } from "./breeze";
 
 /** One transparent, pointer-free canvas. Its clock also drives the 3D breeze. */
 export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const [paused] = useMotionPaused();
   const visible = usePageVisible(), dark = useDarkTheme();
   const weather = useRef({ snow: 0, wind: { strength: 0, phase: 0, x: 0, z: 0 } as Breeze });
 
@@ -34,7 +33,7 @@ export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
       frame = 0;
       const delta = last ? Math.min((now - last) / 1000, 0.05) : 0;
       last = now;
-      const moving = !paused && visible;
+      const moving = visible;
       if (moving) clock.current += delta;
       const state = weather.current;
       sampleBreeze(clock.current, state.wind);
@@ -89,7 +88,7 @@ export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
     window.addEventListener("resize", resize);
     resize();
     return () => { cancelAnimationFrame(frame); window.removeEventListener("resize", resize); };
-  }, [clock, dark, paused, visible]);
+  }, [clock, dark, visible]);
 
   return <canvas ref={canvas} className="viewport-atmosphere" aria-hidden="true" />;
 }

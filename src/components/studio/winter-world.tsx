@@ -1,14 +1,13 @@
-import { useMemo, useRef, useState, type RefObject } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useCursor } from "@react-three/drei";
-import { InstancedMesh, MathUtils, MeshStandardMaterial, Object3D, SpotLight } from "three";
+import { InstancedMesh, Object3D } from "three";
 import { Box } from "./scene-primitives";
 import type { Breeze } from "./breeze";
 import { LampCord, DeskCharm } from "./lamp-cord";
 import { VoxelParts, type Voxel } from "./voxel-parts";
 import { CodeScreen } from "./code-screen";
 
-type AmbientProps = { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze>; grabbedRef: RefObject<boolean> };
+type AmbientProps = { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze> };
 function Keyboard() {
   const ref = useRef<InstancedMesh>(null);
   const { invalidate } = useThree();
@@ -28,36 +27,23 @@ function Keyboard() {
     <Box position={[0,0.025,0.135]} size={[0.23,0.012,0.028]} color="#d8b78c" radius={0.005} />
   </group>;
 }
-function DeskLamp({ on, instant, onToggle, breeze, active, grabbedRef }: Pick<AmbientProps,"breeze"|"active"|"grabbedRef"> & { on: boolean; instant: boolean; onToggle: () => void }) {
-  const [hovered,setHovered] = useState(false);
-  const light = useRef<SpotLight>(null), bulb = useRef<MeshStandardMaterial>(null);
-  const { invalidate } = useThree();
+function DeskLamp({ breeze }: Pick<AmbientProps,"breeze">) {
   const target = useMemo(() => {const object = new Object3D(); object.position.set(-0.25,1.34,0.1); return object;},[]);
-  useCursor(hovered);
-  useFrame((_,delta) => {
-    if (!light.current || !bulb.current) return;
-    const value = on ? 7 : 0;
-    light.current.intensity = instant ? value : MathUtils.damp(light.current.intensity,value,18,Math.min(delta,0.05));
-    bulb.current.emissiveIntensity = on ? 2.5 : 0;
-    if (Math.abs(light.current.intensity-value)>0.005) invalidate();
-  });
   return <>
     <primitive object={target} />
-    <group position={[0.68,1.4,-0.3]} onPointerOver={event => {event.stopPropagation();setHovered(true);}} onPointerOut={() => setHovered(false)} onClick={event => {event.stopPropagation();if(event.delta<6)onToggle();}}>
-      <mesh position={[0,0.025,0]} castShadow receiveShadow><cylinderGeometry args={[0.14,0.16,0.05,20]} /><meshStandardMaterial color={hovered ? "#e6b875" : "#967143"} roughness={0.5} metalness={0.25} /></mesh>
+    <group position={[0.68,1.4,-0.3]}>
+      <mesh position={[0,0.025,0]} castShadow receiveShadow><cylinderGeometry args={[0.14,0.16,0.05,20]} /><meshStandardMaterial color="#967143" roughness={0.5} metalness={0.25} /></mesh>
       <Box position={[0,0.28,0]} size={[0.035,0.5,0.035]} color="#b99459" radius={0.01} />
       <group position={[0,0.55,0]}>
-        <mesh castShadow><cylinderGeometry args={[0.075,0.22,0.19,24,1,true]} /><meshStandardMaterial color={hovered ? "#e8bb71" : "#c8984f"} roughness={0.5} metalness={0.18} side={2} /></mesh>
-        <mesh position={[0,-0.085,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[0.195,24]} /><meshStandardMaterial ref={bulb} color={on ? "#ffe6ad" : "#8a795d"} emissive="#ffb354" emissiveIntensity={on ? 2.5 : 0} side={2} /></mesh>
-        <spotLight ref={light} position={[0,-0.12,0]} target={target} color="#ffc477" intensity={on ? 7 : 0} distance={4.5} angle={1.1} penumbra={0.9} decay={2} castShadow shadow-intensity={0.28} shadow-radius={3} shadow-blurSamples={6} shadow-mapSize={[512,512]} shadow-bias={-0.001} />
+        <mesh castShadow><cylinderGeometry args={[0.075,0.22,0.19,24,1,true]} /><meshStandardMaterial color="#c8984f" roughness={0.5} metalness={0.18} side={2} /></mesh>
+        <mesh position={[0,-0.085,0]} rotation={[-Math.PI/2,0,0]}><circleGeometry args={[0.195,24]} /><meshStandardMaterial color="#ffe6ad" emissive="#ffb354" emissiveIntensity={2.5} side={2} /></mesh>
+        <spotLight position={[0,-0.12,0]} target={target} color="#ffc477" intensity={7} distance={4.5} angle={1.1} penumbra={0.9} decay={2} castShadow shadow-intensity={0.28} shadow-radius={3} shadow-blurSamples={6} shadow-mapSize={[512,512]} shadow-bias={-0.001} />
       </group>
-      <LampCord breeze={breeze} active={active} grabbedRef={grabbedRef} onToggle={onToggle} />
-      {/* Broad, invisible hit surface makes the small lamp usable on touch. */}
-      <mesh position={[-0.07,0.28,0]}><boxGeometry args={[0.2,0.76,0.2]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} color="white" /></mesh>
+      <LampCord breeze={breeze} />
     </group>
   </>;
 }
-export function CodingDesk({ clock, active, breeze, grabbedRef, lampOn, lampInstant, onLampToggle }: AmbientProps & { lampOn: boolean; lampInstant: boolean; onLampToggle: () => void }) {
+export function CodingDesk({ clock, active, breeze }: AmbientProps) {
   return <group position={[-0.48,0,-0.14]}>
     <Box position={[0,1.32,0]} size={[1.94,0.14,1.05]} color="#b58a64" radius={0.008} />
     <Box position={[0,1.405,0.06]} size={[1.24,0.013,0.65]} color="#657c7b" radius={0.03} />
@@ -88,7 +74,7 @@ export function CodingDesk({ clock, active, breeze, grabbedRef, lampOn, lampInst
       <Box position={[0,0,0]} size={[0.13,0.065,0.2]} color="#e0dfd5" radius={0.04} />
       <Box position={[0,0.035,-0.015]} size={[0.012,0.016,0.04]} color="#768b8c" radius={0.005} />
     </group>
-    <DeskLamp on={lampOn} instant={lampInstant} onToggle={onLampToggle} breeze={breeze} active={active} grabbedRef={grabbedRef} />
+    <DeskLamp breeze={breeze} />
     <DeskCharm breeze={breeze} />
     <group position={[-0.77,1.43,-0.26]} rotation={[0,0.2,0]}>
       {["#b77255","#7095a1","#d1b883"].map((color,i)=><group key={color} position={[0,i*0.048,0]}>

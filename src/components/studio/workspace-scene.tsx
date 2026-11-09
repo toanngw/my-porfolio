@@ -1,9 +1,9 @@
 "use client";
 import { Component, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Box3, Group, InstancedMesh, Mesh, Spherical, Vector3 } from "three";
-import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { ContactShadows, TrackballControls } from "@react-three/drei";
+import { Box3, Group, InstancedMesh, Mesh, Quaternion, Vector3 } from "three";
+import type { TrackballControls as TrackballControlsImpl } from "three-stdlib";
 import { DeveloperCharacter } from "./developer-character";
 import { CodingDesk } from "./winter-world";
 import { Atmosphere, InfiniteGround } from "./atmosphere";
@@ -11,23 +11,28 @@ import { sampleBreeze, type Breeze } from "./breeze";
 import { supportsWebGL } from "@/lib/webgl-support";
 
 export type SceneCommands = { reset: () => void; key: (key: string) => void };
-type SceneProps = { clock: RefObject<number>; modelUrl: string | null; active: boolean; reduced: boolean; dark: boolean; controls: RefObject<SceneCommands | null>; lampOn: boolean; lampInstant: boolean; onLampToggle: () => void; onReady: () => void; onUnavailable: () => void };
-const CAMERA = new Vector3(5.2, 3.9, -6.3);
-const TARGET = new Vector3(0, 1.18, 0);
-function CameraControls({ active, reduced, controls: commandsRef, compositionRef, grabbedRef }: Pick<SceneProps,"active"|"reduced"|"controls"> & {compositionRef: RefObject<Group|null>;grabbedRef:RefObject<boolean>}) {
-  const controls = useRef<OrbitControlsImpl>(null);
+type SceneProps = { clock: RefObject<number>; modelUrl: string | null; active: boolean; reduced: boolean; dark: boolean; controls: RefObject<SceneCommands | null>; onReady: () => void; onUnavailable: () => void };
+const TARGET = new Vector3(-0.48, 1.18, 0.235);
+const CAMERA = new Vector3(5.2, 2.72, -6.3).add(TARGET);
+// Stable camera options prevent React updates (including scroll state) resetting zoom.
+const CAMERA_OPTIONS={position:CAMERA.toArray(),zoom:70,near:0.01,far:200};
+const MIN_ZOOM=0.45,MAX_ZOOM=2.5;
+const WORLD_UP=new Vector3(0,1,0);
+function CameraControls({ active, reduced, controls: commandsRef, compositionRef }: Pick<SceneProps,"active"|"reduced"|"controls"> & {compositionRef: RefObject<Group|null>}) {
+  const controls = useRef<TrackballControlsImpl>(null);
   const idle = useRef({ interacting: false, resumeAt: 0 });
   const lastSample = useRef(0);
   const intro = useRef({ phase: "warming", frames: 0, delay: 0.2, time: 0, angle: 0 });
-  const previousGrab = useRef(false);
   const cancelIntro = useRef(() => {});
   const { size, invalidate, get } = useThree();
-  const fit = Math.min(size.width / 4.7, size.height / 3.5);
+  const fit = Math.min(size.width / 3.6, size.height / 2.95);
+  const initialized=useRef(false);
   const previousFit = useRef(fit);
   useEffect(() => {
     const camera = get().camera;
     const ratio = camera.zoom / previousFit.current;
-    camera.zoom = previousFit.current === fit && camera.zoom === 70 ? fit : fit * Math.max(0.7,Math.min(2.1,ratio));
+    camera.zoom = initialized.current ? fit * Math.max(MIN_ZOOM,Math.min(MAX_ZOOM,ratio)) : fit;
+    initialized.current=true;
     previousFit.current = fit;
     camera.updateProjectionMatrix(); invalidate();
   },[get,fit,invalidate]);
@@ -40,26 +45,27 @@ function CameraControls({ active, reduced, controls: commandsRef, compositionRef
     cancelIntro.current = () => {
       if (intro.current.phase === "complete" || intro.current.phase === "cancelled") return;
       intro.current.phase = "cancelled";
-      orbit.autoRotate = false;
       idle.current.resumeAt = performance.now()+3000;
     };
     const immediate = (update: () => void) => {
       cancelIntro.current();
-      orbit.autoRotate = false; orbit.enableDamping = false;
+      orbit.staticMoving = true;
       orbit.update(); update(); camera.updateProjectionMatrix(); orbit.update();
-      orbit.enableDamping = true;
+
       idle.current.resumeAt = performance.now()+3000; invalidate();
     };
-    const reset = () => immediate(() => {if(compositionRef.current)compositionRef.current.rotation.y=0;camera.position.copy(CAMERA);camera.zoom=fit;orbit.target.copy(TARGET);});
+    const reset = () => immediate(() => {if(compositionRef.current)compositionRef.current.rotation.y=0;orbit.reset();camera.position.copy(CAMERA);camera.up.set(0,1,0);camera.zoom=fit;orbit.target.copy(TARGET);});
     commandsRef.current = {reset, key: key => {
       if (key === "Escape" || key === "Home") {reset();return;}
       immediate(() => {
-        if (key === "+" || key === "=" || key === "-") camera.zoom = Math.max(fit*0.7, Math.min(fit*2.1,camera.zoom*(key === "-" ? 0.9 : 1.1)));
+        if (key === "+" || key === "=" || key === "-") camera.zoom = Math.max(fit*MIN_ZOOM, Math.min(fit*MAX_ZOOM,camera.zoom*(key === "-" ? 0.9 : 1.1)));
         else {
-          const spherical = new Spherical().setFromVector3(camera.position.clone().sub(orbit.target));
-          spherical.theta += key === "ArrowLeft" ? 0.16 : key === "ArrowRight" ? -0.16 : 0;
-          spherical.phi = Math.max(0.4,Math.min(1.4,spherical.phi+(key === "ArrowUp" ? -0.1 : key === "ArrowDown" ? 0.1 : 0)));
-          camera.position.copy(new Vector3().setFromSpherical(spherical).add(orbit.target));
+          const axis=new Vector3();
+          if(key==="ArrowLeft"||key==="ArrowRight")axis.copy(camera.up).normalize();
+          else camera.getWorldDirection(axis).cross(camera.up).normalize();
+          const turn=new Quaternion().setFromAxisAngle(axis,(key==="ArrowRight"||key==="ArrowDown"?-1:1)*0.18);
+          camera.position.sub(orbit.target).applyQuaternion(turn).add(orbit.target);
+          camera.up.applyQuaternion(turn).normalize();
         }
       });
     }};
@@ -72,11 +78,6 @@ function CameraControls({ active, reduced, controls: commandsRef, compositionRef
     if (reduced && state.phase !== "complete" && state.phase !== "cancelled") {
       cancelIntro.current(); state.phase = "complete";
     }
-    if (grabbedRef.current) cancelIntro.current();
-    if (previousGrab.current && !grabbedRef.current) {
-      idle.current.interacting = false; idle.current.resumeAt = performance.now()+3000;
-    }
-    previousGrab.current = grabbedRef.current;
     // Compile/render the first frames before spending the visible intro budget.
     // Otherwise a slow first shader compilation can consume the entire spin.
     if (state.phase === "warming" && ++state.frames >= 3) state.phase = "pending";
@@ -96,24 +97,38 @@ function CameraControls({ active, reduced, controls: commandsRef, compositionRef
         state.phase = "complete"; idle.current.resumeAt = performance.now()+1500;
       }
     }
-    orbit.autoRotate = active && state.phase !== "warming" && state.phase !== "running" && state.phase !== "pending" && !grabbedRef.current && !idle.current.interacting && performance.now() >= idle.current.resumeAt;
+    const autoRotate = active && !reduced && state.phase !== "warming" && state.phase !== "running" && state.phase !== "pending" && !idle.current.interacting && performance.now() >= idle.current.resumeAt;
+    if(autoRotate){
+      const axis=WORLD_UP,angle=-Math.min(delta,.05)*.035;
+      camera.position.sub(orbit.target).applyAxisAngle(axis,angle).add(orbit.target);
+      camera.up.applyAxisAngle(axis,angle);
+    }
+    const zoom=Math.max(fit*MIN_ZOOM,Math.min(fit*MAX_ZOOM,camera.zoom));
+    if(zoom!==camera.zoom){camera.zoom=zoom;camera.updateProjectionMatrix();}
     lastSample.current += delta;
     if (lastSample.current > 0.25 || !active) {
       gl.domElement.dataset.intro = state.phase;
       gl.domElement.dataset.introTime = state.time.toFixed(3);
       gl.domElement.dataset.pivot = compositionRef.current?.position.toArray().join(",") ?? "";
       gl.domElement.dataset.introTurns = (state.angle / (Math.PI * 2)).toFixed(3);
-      gl.domElement.dataset.autoRotate = String(orbit.autoRotate);
+      gl.domElement.dataset.autoRotate = String(autoRotate);
       gl.domElement.dataset.camera = camera.position.toArray().map(n=>n.toFixed(3)).join(",");
+      gl.domElement.dataset.cameraUp = camera.up.toArray().map(n=>n.toFixed(3)).join(",");
       gl.domElement.dataset.zoom = camera.zoom.toFixed(2);
       lastSample.current = 0;
     }
   }, -1.5);
-  return <OrbitControls ref={controls} makeDefault target={TARGET} enablePan={false} enableDamping dampingFactor={0.075} rotateSpeed={0.65} zoomSpeed={0.7} minZoom={fit*0.7} maxZoom={fit*2.1} minPolarAngle={0.4} maxPolarAngle={1.4} autoRotateSpeed={0.65} onStart={() => {cancelIntro.current();idle.current.interacting=true; if(controls.current)controls.current.autoRotate=false;}} onEnd={() => {idle.current.interacting=false;idle.current.resumeAt=performance.now()+3000;}} />;
+  // This bundled implementation compares orthographic zoom to maxDistance squared.
+  // Match its zoom-out guard to our minimum zoom; onChange enforces both bounds.
+  return <TrackballControls ref={controls} makeDefault target={TARGET} noPan maxDistance={Math.sqrt(fit*MIN_ZOOM)} rotateSpeed={2.1} zoomSpeed={0.65} dynamicDampingFactor={0.24} keys={["", "", ""]} onChange={()=>{
+    const camera=get().camera;
+    const zoom=Math.max(fit*MIN_ZOOM,Math.min(fit*MAX_ZOOM,camera.zoom));
+    if(zoom!==camera.zoom){camera.zoom=zoom;camera.updateProjectionMatrix();}
+  }} onStart={() => {cancelIntro.current();idle.current.interacting=true;if(controls.current)controls.current.staticMoving=false;}} onEnd={() => {idle.current.interacting=false;idle.current.resumeAt=performance.now()+3000;}} />;
 }
 function Workspace({ active, dark, clock: elapsed, onReady, ...props }: SceneProps) {
   const sample = useRef(0), readyFrames = useRef(0);
-  const compositionRef = useRef<Group>(null), grabbedRef = useRef(false);
+  const compositionRef = useRef<Group>(null);
   const offsetRef = useRef<Group>(null), artworkRef = useRef<Group>(null);
   useLayoutEffect(() => {
     const turntable = compositionRef.current, offset = offsetRef.current, artwork = artworkRef.current;
@@ -144,7 +159,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     sample.current+=delta;
     if(sample.current>0.25 || !active){gl.domElement.dataset.idleTime=elapsed.current.toFixed(2);gl.domElement.dataset.wind=breeze.current.strength.toFixed(3);gl.domElement.dataset.drawCalls=String(gl.info.render.calls);gl.domElement.dataset.triangles=String(gl.info.render.triangles);sample.current=0;}
   },-2);
-  const ambient = {clock:elapsed,active,breeze,grabbedRef};
+  const ambient = {clock:elapsed,active,breeze};
   return <>
     <ambientLight intensity={dark ? 0.55 : 0.85} />
     <hemisphereLight args={["#c7dcf2","#9a7d65",1.2]} />
@@ -154,13 +169,13 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     <directionalLight position={[-3,6,-4]} intensity={2.6} color="#fff0d7" castShadow shadow-intensity={0.32} shadow-radius={4} shadow-blurSamples={8} shadow-mapSize={[1024,1024]} shadow-camera-left={-3.5} shadow-camera-right={3.5} shadow-camera-top={4} shadow-camera-bottom={-3} shadow-normalBias={0.035} shadow-bias={-0.0003} />
     <directionalLight position={[4,3,4]} intensity={1.1} color="#a8c7e8" />
     <group ref={artworkRef} name="workspace-artwork">
-    <CodingDesk {...ambient} lampOn={props.lampOn} lampInstant={props.lampInstant} onLampToggle={props.onLampToggle} />
+    <CodingDesk {...ambient}  />
     <DeveloperCharacter {...ambient} />
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={1} color="#08080b" />
     </group></group>
     <Atmosphere {...ambient} dark={dark} />
-    <CameraControls active={active} reduced={props.reduced} controls={props.controls} compositionRef={compositionRef} grabbedRef={grabbedRef} />
+    <CameraControls active={active} reduced={props.reduced} controls={props.controls} compositionRef={compositionRef} />
   </>;
 }
 class RenderBoundary extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}> {
@@ -172,7 +187,7 @@ class RenderBoundary extends Component<{children:ReactNode;onError:()=>void},{fa
 export default function WorkspaceScene(props:SceneProps) {
   const [supported,setSupported]=useState(supportsWebGL);
   if(!supported)return null;
-  return <RenderBoundary onError={props.onUnavailable}><Canvas shadows="variance" orthographic camera={{position:CAMERA.toArray(),zoom:70,near:0.1,far:100}} dpr={[1,1.5]} frameloop={props.active ? "always" : "demand"} gl={{antialias:true,alpha:true,powerPreference:"low-power"}} fallback={null} onCreated={({gl})=>{gl.setClearColor(0x000000,0);gl.domElement.setAttribute("aria-hidden","true");}}><ContextGuard onLost={()=>{setSupported(false);props.onUnavailable();}} /><Workspace {...props} /></Canvas></RenderBoundary>;
+  return <RenderBoundary onError={props.onUnavailable}><Canvas shadows="variance" orthographic camera={CAMERA_OPTIONS} dpr={[1,1.5]} frameloop={props.active ? "always" : "demand"} gl={{antialias:true,alpha:true,powerPreference:"low-power"}} fallback={null} onCreated={({gl})=>{gl.setClearColor(0x000000,0);gl.domElement.setAttribute("aria-hidden","true");}}><ContextGuard onLost={()=>{setSupported(false);props.onUnavailable();}} /><Workspace {...props} /></Canvas></RenderBoundary>;
 }
 function ContextGuard({onLost}:{onLost:()=>void}) {
   const gl=useThree(state=>state.gl);

@@ -1,90 +1,20 @@
-import { useRef, useState, type RefObject } from "react";
-import { useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
-import { useCursor } from "@react-three/drei";
-import { Group, MathUtils, Mesh, Quaternion, Vector3 } from "three";
-import type { OrbitControls } from "three-stdlib";
+import { useRef, type RefObject } from "react";
+import { useFrame } from "@react-three/fiber";
+import { Group, Quaternion, Vector3 } from "three";
 import type { Breeze } from "./breeze";
 
-export function LampCord({ breeze, active, onToggle, grabbedRef }: { breeze: RefObject<Breeze>; active: boolean; onToggle: () => void; grabbedRef: RefObject<boolean> }) {
-  const pivot = useRef<Group>(null), cord = useRef<Group>(null);
-  const hit = useRef<Mesh>(null);
-  const [hovered, setHovered] = useState(false);
-  const sample = useRef(0);
-  const localWind = useRef(new Vector3()), orientation = useRef(new Quaternion());
-  const gesture = useRef({ pointer: -1, startY: 0, extension: 0, displacement: 0, velocity: 0, angle: 0, angularVelocity: 0, depthAngle: 0, depthVelocity: 0 });
-  const { get, invalidate } = useThree();
-  useCursor(hovered, "pointer");
-  const release = (event: ThreeEvent<PointerEvent>, cancelled = false) => {
-    const value = gesture.current;
-    if (value.pointer !== event.pointerId) return;
-    event.stopPropagation();
-    const shouldToggle = !cancelled && (Math.abs(event.nativeEvent.clientY - value.startY) < 6 || value.extension > 0.035);
-    value.pointer = -1; value.extension = 0; grabbedRef.current = false;
-    const controls = get().controls as OrbitControls | null;
-    if (controls) controls.enabled = true;
-    (event.target as unknown as Element).releasePointerCapture?.(event.pointerId);
-    if (shouldToggle) onToggle();
-    invalidate();
-  };
-  useFrame(({gl,camera}, delta) => {
-    // Enlarge only the invisible hit target on smaller renders; keep the bead delicate.
-    hit.current?.scale.setScalar(MathUtils.clamp(22 / camera.zoom,0.085,0.42));
-    const value = gesture.current;
-    if (pivot.current?.parent) pivot.current.parent.getWorldQuaternion(orientation.current).invert();
-    localWind.current.set(breeze.current.x,0,breeze.current.z).applyQuaternion(orientation.current);
-    // Semi-implicit spring, mass 1 / stiffness 100 / damping 10. Pointer pulling
-    // is direct; only release rebounds. A separate damped pendulum follows wind.
-    if (value.pointer >= 0) { value.displacement = value.extension; value.velocity = 0; }
-    else if (!active) { value.displacement = 0; value.velocity = 0; }
-    // Bounded substeps keep the same spring timing on slower mobile frames.
-    if (active) {
-      let remaining = Math.min(delta, 0.05);
-      while (remaining > 0) {
-        const dt = Math.min(remaining, 1 / 120); remaining -= dt;
-        if (value.pointer < 0) {
-          value.velocity += (-100 * value.displacement - 10 * value.velocity) * dt;
-          value.displacement += value.velocity * dt;
-        }
-        value.angularVelocity += (localWind.current.x * 0.7 - 8 * value.angle - 3.2 * value.angularVelocity) * dt;
-        value.angle += value.angularVelocity * dt;
-        value.depthVelocity += (-localWind.current.z * 0.7 - 8 * value.depthAngle - 3.2 * value.depthVelocity) * dt;
-        value.depthAngle += value.depthVelocity * dt;
-      }
-    }
-    if (pivot.current) {pivot.current.rotation.z = value.angle; pivot.current.rotation.x = value.depthAngle;}
-    if (cord.current) cord.current.scale.y = 1 + value.displacement / 0.2;
-    sample.current += delta;
-    if(sample.current > 0.25 || !active) {
-      gl.domElement.dataset.cordPull = value.displacement.toFixed(3);
-      gl.domElement.dataset.cordSway = value.angle.toFixed(3);
-      sample.current = 0;
-    }
+/** Decorative wind-driven cord; no switch or gesture hit target. */
+export function LampCord({breeze}:{breeze:RefObject<Breeze>}) {
+  const pivot=useRef<Group>(null),orientation=useRef(new Quaternion()),wind=useRef(new Vector3());
+  useFrame(()=>{
+    if(!pivot.current)return;
+    pivot.current.parent?.getWorldQuaternion(orientation.current).invert();
+    wind.current.set(breeze.current.x,0,breeze.current.z).applyQuaternion(orientation.current);
+    pivot.current.rotation.set(-wind.current.z*.08,0,wind.current.x*.08);
   });
-  return <group name="lamp-pull-cord" ref={pivot} position={[0.16, 0.46, -0.11]}>
-    <group ref={cord}>
-      <mesh position={[0, -0.1, 0]} castShadow><cylinderGeometry args={[0.006, 0.006, 0.2, 6]} /><meshStandardMaterial color="#d5c7ae" roughness={0.94} /></mesh>
-      <group position={[0, -0.21, 0]}>
-        <mesh castShadow><capsuleGeometry args={[0.022, 0.036, 3, 8]} /><meshStandardMaterial color={hovered ? "#f5d095" : "#bb8b4e"} roughness={0.45} metalness={0.25} /></mesh>
-        <mesh ref={hit} onPointerOver={event=>{event.stopPropagation();setHovered(true);}} onPointerOut={()=>setHovered(false)}
-          onPointerDown={event=>{
-            if (gesture.current.pointer >= 0 || event.button !== 0) return;
-            event.stopPropagation();
-            gesture.current.pointer = event.pointerId; gesture.current.startY = event.nativeEvent.clientY;
-            grabbedRef.current = true;
-            const controls = get().controls as OrbitControls | null;
-            if (controls) {controls.autoRotate = false;controls.enabled = false;}
-            (event.target as unknown as Element).setPointerCapture?.(event.pointerId);
-          }}
-          onPointerMove={event=>{
-            if (gesture.current.pointer !== event.pointerId) return;
-            event.stopPropagation();
-            gesture.current.extension = MathUtils.clamp((event.nativeEvent.clientY - gesture.current.startY) / get().camera.zoom, 0, 0.2);
-            invalidate();
-          }} onPointerUp={event=>release(event)} onPointerCancel={event=>release(event,true)} onClick={event=>event.stopPropagation()}>
-          <sphereGeometry args={[1, 8, 8]} /><meshBasicMaterial transparent opacity={0} depthWrite={false} />
-        </mesh>
-      </group>
-    </group>
+  return <group ref={pivot} position={[.16,.46,-.11]}>
+    <mesh position={[0,-.1,0]} castShadow><cylinderGeometry args={[.006,.006,.2,6]}/><meshStandardMaterial color="#d5c7ae" roughness={.94}/></mesh>
+    <mesh position={[0,-.21,0]} castShadow><capsuleGeometry args={[.022,.036,3,8]}/><meshStandardMaterial color="#bb8b4e" roughness={.45} metalness={.25}/></mesh>
   </group>;
 }
 

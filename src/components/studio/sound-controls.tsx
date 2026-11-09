@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { studioAudio } from "@/lib/studio-audio";
-import { useDarkTheme, useMotionPaused, usePageVisible, useReducedMotionPreference } from "@/lib/preferences";
+import { useDarkTheme, usePageVisible, useReducedMotionPreference } from "@/lib/preferences";
 
 import { musicTracks as tracks, formatPlaybackTime } from "@/lib/music-tracks";
 
@@ -24,7 +24,6 @@ function useSavedSetting(key: string, fallback: string) {
 function AudioVisualizer({ playing, open }: {playing:boolean;open:boolean}) {
   const canvas=useRef<HTMLCanvasElement>(null);
   const visible=usePageVisible(),reduced=useReducedMotionPreference(),dark=useDarkTheme();
-  const [paused]=useMotionPaused();
   useEffect(()=>{
     const ctx=canvas.current?.getContext("2d");if(!ctx)return;
     const data=new Uint8Array(32);
@@ -34,10 +33,10 @@ function AudioVisualizer({ playing, open }: {playing:boolean;open:boolean}) {
       studioAudio.readSpectrum(data);ctx.clearRect(0,0,208,24);
       ctx.fillStyle=color;
       for(let i=0;i<26;i++) {const height=playing ? Math.max(1,data[i]/255*22) : 1;ctx.fillRect(i*8,24-height,3,height);}
-      if(playing&&open&&visible&&!reduced&&!paused)frame=requestAnimationFrame(draw);
+      if(playing&&open&&visible&&!reduced)frame=requestAnimationFrame(draw);
     };
     draw();return()=>cancelAnimationFrame(frame);
-  },[playing,open,visible,reduced,paused,dark]);
+  },[playing,open,visible,reduced,dark]);
   return <canvas className="audio-visualizer" ref={canvas} width="208" height="24" aria-hidden="true" />;
 }
 export function SoundControls() {
@@ -45,7 +44,7 @@ export function SoundControls() {
   const [playing,setPlaying]=useState(false),[open,setOpen]=useState(false);
   const [blocked,setBlocked]=useState(false);
   const autoplay=useRef({attempted:false,gestureUsed:false,declined:false});
-  const [clicks,setClicks]=useState(true),[muted,setMuted]=useState(false);
+  const [muted,setMuted]=useState(false);
   const [savedVolume,saveVolume]=useSavedSetting("studio-music-volume","35");
   const [savedTrack,saveTrack]=useSavedSetting("studio-music-track",tracks[0].id);
   const volume=Math.max(0,Math.min(100,Number(savedVolume)||0));
@@ -137,7 +136,6 @@ export function SoundControls() {
       <div className="playlist" aria-label="Music tracks">{tracks.map((item,i)=><button key={item.title} aria-pressed={index===i} onClick={()=>select(i)}><span>{item.title}</span><span>{index===i ? "Selected" : "MP3"}</span></button>)}</div>
       <label className="volume-label" htmlFor="studio-volume"><span>Volume</span><output>{muted ? "Muted" : `${volume}%`}</output></label>
       <div className="volume-controls"><button className="transport-button" aria-label={muted ? "Unmute audio" : "Mute audio"} aria-pressed={muted} onClick={()=>{setMuted(!muted);}}><svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4"><path d="M3 7v6h3l4 3V4L6 7Z" />{muted ? <path d="m13 7 5 6m0-6-5 6" /> : <path d="M13 7a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12" />}</svg></button><input id="studio-volume" type="range" min="0" max="100" value={volume} onChange={event=>{const next=Number(event.target.value);saveVolume(String(next));setMuted(false);}} /></div>
-      <label className="click-sounds"><input type="checkbox" checked={clicks} onChange={event=>{setClicks(event.target.checked);studioAudio.clicksEnabled=event.target.checked;}} />Navigation clicks</label>
       {error&&<p className="sound-error" role="status">{error}</p>}
     </div>
   </details>;
