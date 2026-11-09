@@ -1,0 +1,6 @@
+# Snowlight Studio
+Mode: experience. Approved by the user: a single-screen portfolio with a persistent original snowy 3D workspace, a transparent portrait, neutral dark/ivory light palettes, and canvas snowfall in dark mode.
+Build: code-first in the existing Next.js checkout, following the approved plan. No generated layout mockup is the visual authority.
+FORM: user-pinned Snowlight Studio; seed:b4abb72dc6fe8ce8. The user-approved direction takes precedence over the seed's alternate material directions. The seed lookup succeeded on the network-enabled retry. No new concept-selection round is required after approval.
+Direction contract: a miniature open timber alcove, original laptop/desk/lamp/shoji/pine geometry; one quiet content panel with six hash-linked views; no document scrolling on desktop; accessible panel scrolling on constrained screens. Compact type, calm charcoal/ivory surfaces, subtle warm light. Continuous scene/snow only with normal motion and an active tab; user pause and reduced motion freeze ambient movement.
+Factual content: public/cv.pdf and the previously verified CV-backed content. Selected projects are attributed professional examples, not invented personal products.
