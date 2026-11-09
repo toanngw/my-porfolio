@@ -72,7 +72,7 @@ button, a, [tabindex] { outline-offset: 5px; }
 
 @media (hover: hover) and (pointer: fine) {  }
 .studio-signature { display: flex; flex-direction: column; align-items: center; margin-top: 36px; line-height: 1.8; }
-.studio-signature > span:first-child { font-family: var(--font-display), Georgia, serif; font-size: 18px; color: var(--foreground); }
+.studio-signature > span:first-child { font-family: var(--font-body), sans-serif; font-size: 18px; color: var(--foreground); }
 .studio-signature > span:last-child { font-size: 11px; color: var(--muted); margin-top: 3px; }
 .content-frame { position: relative; display: flex; flex-direction: column; min-height: 0; width: 100%; height: min(600px,100%); }
 .content-panel { position: relative; flex: 1; min-height: 0; width: 100%; overflow-y: auto; overflow-x: hidden; overscroll-behavior-y: contain; scrollbar-width: thin; scrollbar-color: var(--line) transparent; padding: 24px 16px 16px 5px; scrollbar-gutter: stable; }
@@ -84,7 +84,7 @@ h1,h2,h3,p { margin: 0; }
 h1,h2,h3 { text-wrap: balance; overflow-wrap: anywhere; }
 p { text-wrap: pretty; }
 .view-content p { color: var(--muted); font-size: 13px; margin-top: 17px; }
-.view-title { font-family: var(--font-display), Georgia, serif; font-size: 34px; line-height: 1.28; font-weight: 400; letter-spacing: -.03em; margin-bottom: 24px; }
+.view-title { font-family: var(--font-body), sans-serif; font-size: 34px; line-height: 1.28; font-weight: 400; letter-spacing: -.03em; margin-bottom: 24px; }
 .view-content h2 { font-size: 17px; font-weight: 500; line-height: 1.5; letter-spacing: -.02em; }
 .view-content h3 { font-size: 14px; font-weight: 500; }
 .view-content .lead { color: var(--foreground); font-size: 15px; }
@@ -240,22 +240,15 @@ p { text-wrap: pretty; }
 .scene-frame { overflow: visible; }
 @media (max-width: 800px) { .scene-frame { height: 100%; max-width: none; } }
 
-/* A sculpted monogram and a geometric display voice, in the original warm palette. */
-.wordmark > .brand-mark { width: 34px; height: 34px; flex-shrink: 0; filter: drop-shadow(0 3px 3px rgb(0 0 0 / .15)); transition: transform 280ms var(--ease-out), filter 280ms; }
-.view-title, .home-identity h1 { font-family: var(--font-display), sans-serif; font-weight: 700; letter-spacing: -.065em; line-height: 1.08; }
-.view-title { font-size: clamp(35px,3.2vw,48px); max-width: 16ch; padding-bottom: .12em; background: linear-gradient(120deg,var(--foreground) 20%,var(--foreground) 60%,var(--accent)); background-clip: text; -webkit-text-fill-color: transparent; }
-.view-content h2 { font-family: var(--font-display),sans-serif; font-weight: 600; letter-spacing: -.035em; }
-.home-identity h1 { text-shadow: 0 3px 0 color-mix(in srgb,var(--accent) 10%,transparent); }
 .scroll-section { position: relative; }
-.scroll-section::before { content: ''; display: block; width: 34px; height: 3px; margin: 5px 0 22px; border-radius: 3px; background: linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 10%,transparent)); }
-.scroll-section:first-child::before { display: none; }
+
+
 .primary-link { position: relative; overflow: hidden; box-shadow: 0 4px 0 color-mix(in srgb,var(--accent) 22%,transparent); transition: transform 220ms var(--ease-out), box-shadow 220ms; }
 .primary-link::before { content: ''; position: absolute; inset: 0; background: linear-gradient(110deg,transparent 25%,rgb(255 255 255 / .14) 45%,transparent 65%); transform: translateX(-120%); transition: transform 600ms var(--ease-out); pointer-events: none; }
 .primary-link svg, .contact-link svg, .experience-option svg { transition: transform 240ms var(--ease-out); }
 .project-selector button, .experience-option, .technology-list li, .contact-link { transition: background 220ms, transform 220ms var(--ease-out), border-color 220ms; }
 .portrait-cutout { transition: transform 400ms var(--ease-out), box-shadow 400ms; }
 @media (hover:hover) and (pointer:fine) {
-  .wordmark:hover .brand-mark { transform: perspective(180px) rotateY(-18deg) rotateX(9deg) translateY(-2px); filter: drop-shadow(2px 6px 5px rgb(0 0 0 / .22)); }
   .primary-link:hover { transform: translateY(-2px); box-shadow: 0 6px 0 color-mix(in srgb,var(--accent) 22%,transparent); }
   .primary-link:hover::before { transform: translateX(120%); }
   .primary-link:hover svg, .contact-link:hover svg, .experience-option:hover svg { transform: translate(2px,-2px); }
@@ -263,5 +256,32 @@ p { text-wrap: pretty; }
   .portrait-cutout:hover { transform: rotate(-2deg) translateY(-3px); box-shadow: 4px 8px 0 color-mix(in srgb,var(--accent) 12%,transparent); }
 }
 .primary-link:active { transform: translateY(1px); box-shadow: 0 1px 0 var(--line); }
-@media (max-width:480px) { .wordmark > .brand-mark { width: 29px; height: 29px; } .view-title, .contact-view .view-title { font-size: 34px; } .scroll-section::before { margin-bottom: 18px; } }
-@media (prefers-reduced-motion:reduce) { .wordmark > .brand-mark, .primary-link, .primary-link::before, .primary-link svg, .contact-link svg, .experience-option, .experience-option svg, .technology-list li, .project-selector button, .portrait-cutout { transition: none; } .wordmark:hover .brand-mark, .primary-link:hover, .technology-list li:hover, .portrait-cutout:hover { transform: none; } }
+@media (prefers-reduced-motion:reduce) { .primary-link, .primary-link::before, .primary-link svg, .contact-link svg, .experience-option, .experience-option svg, .technology-list li, .project-selector button, .portrait-cutout { transition: none; } .primary-link:hover, .technology-list li:hover, .portrait-cutout:hover { transform: none; } }
+
+/* A single canvas stays mounted throughout the actor-driven welcome. */
+.scene-slot { min-width: 0; height: clamp(440px,57dvh,680px); }
+.cinematic-stage { position: fixed; left: 0; top: 0; width: 100vw; height: 100dvh; z-index: 2; }
+.cinematic-stage .workspace-stage, .cinematic-stage .scene-frame { width: 100%; height: 100%; max-width: none; }
+.studio-app[data-intro="playing"] { --story-reveal: 0; }
+.studio-app[data-intro="playing"] .app-header, .studio-app[data-intro="playing"] .app-footer, .studio-app[data-intro="playing"] .content-frame { opacity: var(--story-reveal); }
+.studio-app[data-intro="playing"] .cinematic-stage { z-index: 30; }
+.intro-scroll-spacer { height: 100%; }
+.skip-intro { position: fixed; z-index: 50; right: 28px; bottom: 24px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 30px; background: var(--background); color: var(--foreground); font-size: 12px; display: flex; gap: 18px; align-items: center; }
+.skip-intro:hover { background: var(--surface); }
+@media (max-width:800px) { .scene-slot { height: 100%; } }
+@media (max-height:700px) and (min-width:801px) { .scene-slot { height: clamp(180px,46dvh,340px); } }
+
+.studio-app[data-intro="playing"] .content-frame, .studio-app[data-intro="playing"] .app-header, .studio-app[data-intro="playing"] .app-footer { pointer-events: none; }
+
+
+/* One content view at a time; longer views keep their own reading scroll. */
+.scroll-section[hidden] { display: none; }
+.studio-app[data-view-transition="true"] .scroll-section[data-active="true"] { animation: section-arrive 420ms var(--ease-out) both; }
+@keyframes section-arrive { from { opacity: 0; transform: translate3d(0,30px,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
+.scroll-thumb { transition: top 420ms var(--ease-out), width 150ms, left 150ms, box-shadow 150ms; }
+@media (prefers-reduced-motion: reduce) { .studio-app[data-view-transition="true"] .scroll-section[data-active="true"] { animation: none; } .scroll-thumb { transition: none; } }
+
+/* A short compliant movement makes each boundary notch visible without rubber-banding. */
+.scroll-section { translate: 0 var(--detent-shift,0px); }
+.scroll-thumb { transform: translateY(var(--detent-shift,0px)); }
+@media (prefers-reduced-motion:reduce) { .scroll-section { translate: none; } .scroll-thumb { transform: none; } }

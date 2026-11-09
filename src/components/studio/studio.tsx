@@ -1,8 +1,11 @@
 "use client";
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { studioAudio } from "@/lib/studio-audio";
+import { createStory, skipStory } from "./character-story";
+import { CinematicStage } from "./cinematic-stage";
 import { Mark } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useReducedMotionPreference } from "@/lib/preferences";
+import { useClientReady, useReducedMotionPreference } from "@/lib/preferences";
 import { viewFromHash, viewLabels, views, type View } from "@/lib/portfolio";
 import { WorkspaceStage } from "./workspace-stage";
 import { ViewContent } from "./view-content";
@@ -19,38 +22,51 @@ function subscribeNavigation(callback: () => void) {
 const getView = () => viewFromHash(window.location.hash);
 export function Studio({ modelUrl }: { modelUrl: string | null }) {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
-  const reduced = useReducedMotionPreference();
+  const reduced = useReducedMotionPreference(),clientReady=useClientReady();
+  const story=useRef(createStory()),focusAfterSkip=useRef(false);
+  const [introComplete,setIntroComplete]=useState(false);
+  const [navigationMotion,setNavigationMotion]=useState(false);
+  const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null);
+  const finish=useCallback(()=>setIntroComplete(true),[]);
+  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-intro,.skip-link");skipStory(story.current);setIntroComplete(true);},[]);
+  const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
+  useEffect(()=>{if(clientReady&&reduced)skip();},[clientReady,reduced,skip]);
+  useEffect(()=>{const timeout=setTimeout(()=>{if(!story.current.started)skip();},10000);return()=>clearTimeout(timeout);},[skip]);
   const clock = useRef(0);
   const content = useRef<HTMLDivElement>(null);
-  const goTo = useCallback((target: View, fromScroll = false) => {
-    if(fromScroll){
-      window.history.replaceState(null, "", `#${target}`);
-      window.dispatchEvent(new Event("popstate-scroll"));
-    }else{
-      window.history.pushState(null, "", `#${target}`);
-      window.dispatchEvent(new CustomEvent("studio-scroll-to",{detail:target}));
+  useLayoutEffect(()=>{
+    if(introComplete){content.current?.scrollTo({top:0});shell.current?.style.setProperty("--story-reveal","1");
+      if(focusAfterSkip.current){content.current?.focus({preventScroll:true});focusAfterSkip.current=false;}
     }
+  },[introComplete]);
+  const goTo = useCallback((target: View, fromScroll = false) => {
+    if(viewFromHash(window.location.hash)===target)return;
+    setNavigationMotion(true);
+    window.history[fromScroll?"replaceState":"pushState"](null,"",`#${target}`);
+    window.dispatchEvent(new Event("popstate-scroll"));
   }, []);
-  return <div className="studio-app" onClickCapture={event => {
+  return <div ref={shell} className="studio-app" data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const anchor = (event.target as Element).closest("a");
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
-    <ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>
-    <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); content.current?.focus(); }}>Skip to content</a>
+    {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
+    {!introComplete&&<button className="skip-intro" onClick={skip}>Skip intro <span aria-hidden="true">↗</span></button>}
+    <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell">
-      <header className="app-header">
+      <header className="app-header" inert={!introComplete}>
         <a href="#home" className="wordmark" aria-label="Cao-Toan Nguyen, Home"><Mark /><span>Cao-Toan Nguyen<span className="warm-dot">.</span></span></a>
         <div className="header-controls"><SoundControls /><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <div className="scene-column"><WorkspaceStage clock={clock} modelUrl={modelUrl} /></div>
-        <div className="content-frame"><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
-          {views.map(item=><div key={item} className="scroll-section" data-scroll-view={item} data-active={view===item}><ViewContent view={item} animate={false}/></div>)}
+        <CinematicStage story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage clock={clock} modelUrl={modelUrl} story={story} onRelease={finish} onUnavailable={skip}/></CinematicStage>
+        <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
+          {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
+          {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item} animate={false}/></div>)}
         </div><PanelContinuation panel={content} view={view} /></div>
       </main>
-      <footer className="app-footer"><span>© 2026 Cao-Toan Nguyen</span><span>Made with care, and a little winter.</span></footer>
+      <footer className="app-footer" inert={!introComplete}><span>© 2026 Cao-Toan Nguyen</span><span>Made with care, and a little winter.</span></footer>
     </div>
     <span className="sr-only" role="status" aria-live="polite">{viewLabels[view]} view</span>
   </div>;

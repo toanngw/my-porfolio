@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 const body = localFont({ src: "./fonts/dm-sans.ttf", variable: "--font-body", display: "swap" });
-const display = localFont({ src: "./fonts/space-grotesk.ttf", weight: "300 700", variable: "--font-display", display: "swap" });
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")),
   title: "Cao-Toan Nguyen — Software Engineer",
@@ -13,5 +12,5 @@ export const metadata: Metadata = {
 };
 const themeScript = `(function(){try{var t=localStorage.getItem('theme');document.documentElement.dataset.theme=t==='light'||t==='dark'?t:matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}catch(e){document.documentElement.dataset.theme=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}})()`;
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="en" suppressHydrationWarning className={`${body.variable} ${display.variable}`}><head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head><body>{children}</body></html>;
+  return <html lang="en" suppressHydrationWarning className={body.variable}><head><script dangerouslySetInnerHTML={{ __html: themeScript }} /></head><body>{children}</body></html>;
 }
