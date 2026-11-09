@@ -5,6 +5,7 @@ import { InstancedMesh, MathUtils, MeshStandardMaterial, Object3D, SpotLight } f
 import { Box } from "./scene-primitives";
 import type { Breeze } from "./breeze";
 import { LampCord, DeskCharm } from "./lamp-cord";
+import { VoxelParts, type Voxel } from "./voxel-parts";
 import { CodeScreen } from "./code-screen";
 
 type AmbientProps = { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze>; grabbedRef: RefObject<boolean> };
@@ -58,7 +59,7 @@ function DeskLamp({ on, instant, onToggle, breeze, active, grabbedRef }: Pick<Am
 }
 export function CodingDesk({ clock, active, breeze, grabbedRef, lampOn, lampInstant, onLampToggle }: AmbientProps & { lampOn: boolean; lampInstant: boolean; onLampToggle: () => void }) {
   return <group position={[-0.48,0,-0.14]}>
-    <Box position={[0,1.32,0]} size={[1.94,0.14,1.05]} color="#b58a64" radius={0.055} />
+    <Box position={[0,1.32,0]} size={[1.94,0.14,1.05]} color="#b58a64" radius={0.008} />
     <Box position={[0,1.405,0.06]} size={[1.24,0.013,0.65]} color="#657c7b" radius={0.03} />
     {[-0.8,0.8].map(x=><group key={x}>
       <Box position={[x,0.66,0]} size={[0.075,1.22,0.075]} color="#39474b" radius={0.018} />
@@ -66,6 +67,13 @@ export function CodingDesk({ clock, active, breeze, grabbedRef, lampOn, lampInst
       <Box position={[x,1.2,0]} size={[0.09,0.06,0.8]} color="#465458" radius={0.015} />
     </group>)}
     <Box position={[0,1.05,-0.35]} size={[1.6,0.045,0.05]} color="#39474b" radius={0.01} />
+    <VoxelParts parts={[
+      ...Array.from({length:7},(_,i):Voxel=>[0,1.391,-.44+i*.145,1.85,.006,.008,"#98704f"]),
+      [.72,1.48,.02,.21,.17,.21,"#c88562"],[.72,1.57,.02,.24,.035,.24,"#e3aa82"],
+      [.72,1.59,.02,.18,.012,.18,"#4c4033"],[.72,1.69,.02,.035,.23,.035,"#617958"],
+      [.65,1.72,.02,.13,.055,.08,"#79976b"],[.78,1.77,.02,.12,.055,.08,"#90a77a"],
+      [.72,1.84,.02,.075,.08,.08,"#68895e"],
+    ]}/>
     <Keyboard />
     <group position={[-0.17,1.76,-0.3]} rotation={[-0.1,0,0]}>
       <Box position={[0,0,0]} size={[0.89,0.59,0.055]} color="#3a4851" radius={0.038} />

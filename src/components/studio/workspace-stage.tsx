@@ -19,7 +19,7 @@ export function WorkspaceStage({ clock, modelUrl }: { clock: RefObject<number>; 
   const active=clientReady&&!paused&&visible;
   const reduced=useReducedMotionPreference();
   return <div className="workspace-stage" data-ready={ready} data-motion={active ? "running" : "paused"} data-lamp={lamp.on}>
-    <div className="scene-frame" role={ready ? "group" : "img"} aria-label={modelUrl ? "Interactive winter coding world with your supplied 3D character, maple leaves, flowing wind, and a pull-cord desk lamp" : "Interactive winter workspace with a coding desk, coffee, maple leaves, flowing wind, and a pull-cord lamp"} aria-describedby="scene-instructions" tabIndex={ready ? 0 : -1} onKeyDown={event=>{
+    <div className="scene-frame" role={ready ? "group" : "img"} aria-label="Interactive voxel developer at a wooden workstation with coffee, a plant, and a pull-cord desk lamp" aria-describedby="scene-instructions" tabIndex={ready ? 0 : -1} onKeyDown={event=>{
       if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","+","=","-","Escape","Home"].includes(event.key)){event.preventDefault();controls.current?.key(event.key);}
     }}>
       <div className="scene-poster" aria-hidden="true"><Image src={studioFallback} alt="" fill sizes="(max-width:480px) 320px, (max-width:800px) 440px, (min-width:1600px) 760px, 650px" loading="eager" /></div>

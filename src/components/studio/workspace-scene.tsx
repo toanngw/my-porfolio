@@ -2,10 +2,9 @@
 import { Component, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, OrbitControls } from "@react-three/drei";
-import { Box3, Group, Mesh, Spherical, Vector3 } from "three";
+import { Box3, Group, InstancedMesh, Mesh, Spherical, Vector3 } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { DeveloperCharacter } from "./developer-character";
-import { Coffee } from "./workspace-coffee";
 import { CodingDesk } from "./winter-world";
 import { Atmosphere, InfiniteGround } from "./atmosphere";
 import { sampleBreeze, type Breeze } from "./breeze";
@@ -126,6 +125,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     artwork.traverse(object => {
       const mesh = object as Mesh;
       if (!mesh.isMesh || !mesh.castShadow) return;
+      if(mesh instanceof InstancedMesh){mesh.computeBoundingBox();if(mesh.boundingBox)bounds.union(part.copy(mesh.boundingBox).applyMatrix4(mesh.matrixWorld));return;}
       mesh.geometry.computeBoundingBox();
       if (mesh.geometry.boundingBox) bounds.union(part.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
     });
@@ -152,10 +152,10 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     <group ref={compositionRef} name="workspace-turntable" position={[-0.48,0,0.2]}>
     <group ref={offsetRef} position={[0.48,0,-0.2]}>
     <directionalLight position={[-3,6,-4]} intensity={2.6} color="#fff0d7" castShadow shadow-intensity={0.32} shadow-radius={4} shadow-blurSamples={8} shadow-mapSize={[1024,1024]} shadow-camera-left={-3.5} shadow-camera-right={3.5} shadow-camera-top={4} shadow-camera-bottom={-3} shadow-normalBias={0.035} shadow-bias={-0.0003} />
-    <directionalLight position={[4,3,4]} intensity={1.6} color="#a8c7e8" />
+    <directionalLight position={[4,3,4]} intensity={1.1} color="#a8c7e8" />
     <group ref={artworkRef} name="workspace-artwork">
     <CodingDesk {...ambient} lampOn={props.lampOn} lampInstant={props.lampInstant} onLampToggle={props.onLampToggle} />
-    {props.modelUrl ? <DeveloperCharacter {...ambient} modelUrl={props.modelUrl} /> : <group position={[-0.15,1.49,0.11]}><Coffee {...ambient} /></group>}
+    <DeveloperCharacter {...ambient} />
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={1} color="#08080b" />
     </group></group>
