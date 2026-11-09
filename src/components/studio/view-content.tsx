@@ -13,7 +13,7 @@ function Home() {
   return <>
     <div className="home-identity">
       <div><h1 tabIndex={-1} id="view-title-home">Cao-Toan<br />Nguyen<span className="warm-dot">.</span></h1><p className="home-role">Software Engineer</p></div>
-      <div className="portrait-cutout"><Image src="/avatar-cutout.webp" alt="Cao-Toan Nguyen" fill sizes="(max-width: 480px) 112px, 150px" priority /></div>
+      <div className="portrait-cutout"><Image src="/avatar-cutout.webp" alt="Cao-Toan Nguyen" fill sizes="(max-width: 480px) 144px, 190px" priority /></div>
     </div>
     <p className="home-intro">I build backend systems and APIs.<br />A little curiosity, a lot of care, and a journey from Hungary to Vietnam.</p>
     <p className="home-note">Java backend development, with experience in computer vision.</p>

@@ -9,6 +9,8 @@ import { Snowfall } from "./snowfall";
 import { WorkspaceStage } from "./workspace-stage";
 import { ViewContent } from "./view-content";
 import { PanelContinuation } from "./panel-continuation";
+import { SoundControls } from "./sound-controls";
+import { playNavigationClick } from "@/lib/studio-audio";
 function subscribeNavigation(callback: () => void) {
   window.addEventListener("hashchange", callback);
   window.addEventListener("popstate", callback);
@@ -31,6 +33,7 @@ export function Studio() {
   const navigate = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     event.preventDefault();
+    playNavigationClick();
     setPointerNavigation(event.detail > 0);
     const target = event.currentTarget.hash;
     if (window.location.hash !== target) {
@@ -45,7 +48,7 @@ export function Studio() {
       <header className="app-header">
         <a href="#home" className="wordmark" onClick={navigate} aria-label="Cao-Toan Nguyen, Home"><Mark /><span>Toan Nguyen<span className="warm-dot">.</span></span></a>
         <nav aria-label="Main navigation">{views.map(item => <a key={item} href={`#${item}`} aria-current={view === item ? "page" : undefined} onClick={navigate}>{viewLabels[item]}</a>)}</nav>
-        <div className="header-controls"><button className="icon-button motion-toggle" onClick={togglePaused} aria-pressed={paused} aria-label={paused ? "Resume motion" : "Pause motion"} title={paused ? "Resume motion" : "Pause motion"}><svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paused ? <path d="m8 5 11 7-11 7V5Z" /> : <><path d="M8 5v14M16 5v14" /></>}</svg></button><ThemeToggle /></div>
+        <div className="header-controls"><SoundControls /><button className="icon-button motion-toggle" onClick={togglePaused} aria-pressed={paused} aria-label={paused ? "Resume motion" : "Pause motion"} title={paused ? "Resume motion" : "Pause motion"}><svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">{paused ? <path d="m8 5 11 7-11 7V5Z" /> : <><path d="M8 5v14M16 5v14" /></>}</svg></button><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
         <div className="scene-column"><WorkspaceStage /><div className="studio-signature"><span>Snowlight Studio</span><span>A quiet corner of the internet.</span></div></div>

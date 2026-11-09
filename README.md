@@ -25,7 +25,10 @@ npm start
 - `src/app/page.tsx`: server-rendered entry and preserved SEO layout.
 - `src/components/studio/studio.tsx`: persistent app shell, hash navigation, bounded content panel.
 - `src/components/studio/view-content.tsx`: six content views and selectors.
-- `src/components/studio/workspace-scene.tsx`: original procedural 3D workspace.
+- `src/components/studio/workspace-scene.tsx`: original procedural 3D workspace and continuous turntable motion.
+- `src/components/studio/developer-character.tsx`: typing, coffee break, and steam choreography.
+- `src/components/studio/code-screen.tsx`: scrolling illustrative code texture.
+- `src/components/studio/sound-controls.tsx` and `src/lib/studio-audio.ts`: optional original instrumental lo-fi, navigation clicks, and volume controls.
 - `src/components/studio/workspace-stage.tsx`: dynamic client-only scene and static fallback.
 - `src/components/studio/snowfall.tsx`: lightweight dark-mode-only Canvas snowfall.
 - `src/lib/portfolio.ts`: CV-supported content.
@@ -42,4 +45,10 @@ Deploy as a standard Next.js application. Build: `npm run build`; Node start: `n
 
 ## Review evidence
 
+The latest scene, portrait, and audio verification is recorded in `docs/scene-and-sound-review.md`.
+
 `DESIGN.md`, `PRODUCT.md`, and `.impeccable/design.json` record the current system. Earlier reviews under `docs/` describe the first portfolio iteration; the Snowlight Studio review covers this redesign. Local screenshots in `.playwright-mcp/` are ignored by Git and are not deployment assets.
+
+## Sound and scene details
+
+Open the headphones control in the header and select **Play music**. Music requires this explicit gesture; it does not autoplay. Adjust Volume or turn Navigation clicks off independently. Volume zero silences both. Audio is generated locally with Web Audio, with no song files, lyrics, third-party samples, or network requests. Music stops in hidden tabs and resumes when returning if enabled. The scene makes a full rotation every 60 seconds; the original blocky developer types and takes a coffee break every 22 seconds. All scene motion shares the existing pause and reduced-motion controls. The circular portrait uses the existing transparent cutout; the original photo is untouched.

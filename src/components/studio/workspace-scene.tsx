@@ -1,21 +1,34 @@
 "use client";
 import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { RoundedBox, ContactShadows, OrthographicCamera } from "@react-three/drei";
+import { ContactShadows, OrthographicCamera } from "@react-three/drei";
 import { Group, MathUtils, OrthographicCamera as ThreeOrthographicCamera } from "three";
+import { Box } from "./scene-primitives";
+import { DeveloperCharacter } from "./developer-character";
+import { CodeScreen } from "./code-screen";
 
 type SceneProps = { active: boolean; dark: boolean; pointer: RefObject<{ x: number; y: number }>; onReady: () => void; onUnavailable: () => void };
-type BoxProps = { position: [number, number, number]; size: [number, number, number]; color: string; radius?: number; rotation?: [number, number, number]; emissive?: string };
-function Box({ position, size, color, radius = 0.025, rotation, emissive }: BoxProps) {
-  return <RoundedBox position={position} args={size} radius={Math.min(radius, Math.min(...size) / 3)} smoothness={2} bevelSegments={2} rotation={rotation} castShadow receiveShadow><meshStandardMaterial color={color} roughness={0.8} emissive={emissive} emissiveIntensity={emissive ? 0.45 : 0} /></RoundedBox>;
-}
 function Pine() {
-  return <group position={[1.14, 0.17, 0.25]}>
+  return <group position={[1.14, 0.08, 0.25]}>
     <mesh position={[0, 0.34, 0]} castShadow><cylinderGeometry args={[0.07, 0.09, 0.65, 8]} /><meshStandardMaterial color="#81664b" /></mesh>
     {[{ y: 0.67, r: 0.62, h: 0.9 }, { y: 1.16, r: 0.48, h: 0.86 }, { y: 1.62, r: 0.33, h: 0.77 }].map(({ y, r, h }) => <group key={y}>
       <mesh position={[0, y, 0]} castShadow receiveShadow><coneGeometry args={[r, h, 9]} /><meshStandardMaterial color="#496459" roughness={1} /></mesh>
       <mesh position={[0, y + h * 0.13, 0]} castShadow receiveShadow><coneGeometry args={[r * 0.81, h * 0.8, 9]} /><meshStandardMaterial color="#edf1ee" roughness={1} /></mesh>
     </group>)}
+    {Array.from({ length: 18 }, (_, i) => {
+      const angle = i * 2.4;
+      const y = 0.37 + i * 0.078;
+      const radius = 0.54 - i * 0.022;
+      return <group key={i} position={[Math.cos(angle) * radius, y, Math.sin(angle) * radius]}>
+        <mesh><sphereGeometry args={[i % 3 === 0 ? 0.05 : 0.032, 10, 8]} /><meshStandardMaterial color={i % 3 === 0 ? "#b76c52" : "#e1bc76"} emissive={i % 3 === 0 ? "#5b2414" : "#ad7333"} emissiveIntensity={0.35} roughness={0.45} metalness={0.2} /></mesh>
+        <mesh position={[0, 0.04, 0]}><cylinderGeometry args={[0.008, 0.008, 0.025, 5]} /><meshStandardMaterial color="#a7844c" /></mesh>
+      </group>;
+    })}
+    <group position={[0, 2.08, 0]} rotation={[0, 0, Math.PI / 4]}><Box position={[0, 0, 0]} size={[0.13, 0.13, 0.055]} color="#e5bb72" emissive="#af7a38" radius={0.015} /></group>
+    <Box position={[-0.24, 0.11, 0.43]} size={[0.26, 0.2, 0.23]} color="#a66e54" radius={0.015} />
+    <Box position={[-0.24, 0.115, 0.43]} size={[0.045, 0.21, 0.24]} color="#e6cfab" radius={0.003} />
+    <Box position={[0.16, 0.075, 0.49]} size={[0.21, 0.13, 0.2]} color="#728d88" radius={0.012} />
+    <Box position={[0.16, 0.08, 0.49]} size={[0.22, 0.14, 0.035]} color="#e6cfab" radius={0.003} />
   </group>;
 }
 function Workspace({ active, pointer, dark, onReady }: SceneProps) {
@@ -36,7 +49,9 @@ function Workspace({ active, pointer, dark, onReady }: SceneProps) {
     if (active) elapsed.current += step;
     const time = elapsed.current;
     const desiredY = active ? Math.sin(time * 0.8) * 0.07 : 0;
-    const desiredYaw = -0.12 + (active ? Math.sin(time * 0.36) * 0.1 + pointer.current.x * 0.18 : 0);
+    // An unwrapped angle keeps each 60-second revolution seamless. Pointer input
+    // adds a damped offset without taking over the continuous turntable motion.
+    const desiredYaw = -0.12 + time * Math.PI * 2 / 60 + pointer.current.x * 0.24;
     if (active) {
       object.position.y = MathUtils.damp(object.position.y, desiredY, 4, step);
       object.rotation.y = MathUtils.damp(object.rotation.y, desiredYaw, 4.5, step);
@@ -52,7 +67,7 @@ function Workspace({ active, pointer, dark, onReady }: SceneProps) {
   const wood = "#af8260";
   const frame = "#78563e";
   return <>
-    <OrthographicCamera ref={cameraRef} makeDefault position={[5.4, 4.2, 6]} zoom={Math.min(size.width / 5.65, size.height / 4.45)} near={0.1} far={100} />
+    <OrthographicCamera ref={cameraRef} makeDefault position={[5.4, 4.2, 6]} zoom={Math.min(size.width / 5.65, size.height / 3.85)} near={0.1} far={100} />
     <ambientLight intensity={dark ? 1.0 : 1.3} />
     <hemisphereLight args={["#d6e5f0", "#8c7262", 1.3]} />
     <directionalLight position={[-3, 6, 5]} intensity={2.8} color="#fff0d9" />
@@ -62,21 +77,15 @@ function Workspace({ active, pointer, dark, onReady }: SceneProps) {
       <Box position={[0, 0.045, 0]} size={[3.72, 0.09, 2.87]} color="#e9eee9" radius={0.12} />
       <Box position={[-0.47, 0.145, -0.26]} size={[2.22, 0.13, 1.9]} color={frame} />
       {Array.from({ length: 7 }, (_, i) => <Box key={i} position={[-0.47, 0.223, -1.04 + i * 0.26]} size={[2.15, 0.035, 0.25]} color={i % 2 ? "#b88e6a" : wood} radius={0.008} />)}
-      <Box position={[-0.47, 1.21, -1.07]} size={[2.16, 1.9, 0.055]} color="#e8dcc5" emissive={dark ? "#665335" : undefined} />
-      {[-1.55, 0.61].map(x => <Box key={x} position={[x, 1.2, -1.035]} size={[0.085, 2.05, 0.1]} color={frame} />)}
-      {[0.25, 1.2, 2.16].map(y => <Box key={y} position={[-0.47, y, -1.02]} size={[2.25, 0.065, 0.11]} color={frame} />)}
-      {[-1.02, -0.47, 0.08].map(x => <Box key={x} position={[x, 1.2, -1.025]} size={[0.025, 1.85, 0.035]} color="#9c7956" radius={0.005} />)}
-      {[0.7, 1.67].map(y => <Box key={y} position={[-0.47, y, -1.025]} size={[2.1, 0.025, 0.035]} color="#9c7956" radius={0.005} />)}
-      <Box position={[-0.47, 2.21, -1.04]} size={[2.34, 0.065, 0.19]} color="#f0f3ed" />
       <group position={[-0.49, 0, -0.08]}>
         <Box position={[0, 0.95, 0]} size={[1.78, 0.12, 0.92]} color={wood} radius={0.04} />
         {[-0.73, 0.73].flatMap(x => [-0.31, 0.31].map(z => <Box key={`${x}-${z}`} position={[x, 0.57, z]} size={[0.07, 0.72, 0.07]} color={frame} />))}
         <Box position={[-0.15, 1.033, -0.02]} size={[0.71, 0.035, 0.46]} color="#5e6b71" radius={0.02} />
         <Box position={[-0.15, 1.051, -0.01]} size={[0.54, 0.008, 0.27]} color="#3e4b50" radius={0.01} />
+        {Array.from({ length: 4 }, (_, row) => Array.from({ length: 9 }, (_, col) => <Box key={`${row}-${col}`} position={[-0.39 + col * 0.058, 1.059, -0.11 + row * 0.05]} size={[0.042, 0.008, 0.035]} color="#a2b1b1" radius={0.003} />))}
         <group position={[-0.15, 1.28, -0.23]} rotation={[-0.16, 0, 0]}>
           <Box position={[0, 0, 0]} size={[0.72, 0.48, 0.035]} color="#44545b" radius={0.025} />
-          <Box position={[0, 0.015, 0.025]} size={[0.62, 0.365, 0.009]} color="#b4d1d4" emissive="#77acb3" radius={0.006} />
-          {[0.08, 0.01, -0.06].map((y, i) => <Box key={y} position={[-0.08 + i * 0.015, y, 0.033]} size={[0.26 - i * 0.045, 0.014, 0.005]} color={i === 1 ? "#748e92" : "#e7f2ed"} radius={0.001} />)}
+          <CodeScreen clock={elapsed} active={active} />
         </group>
         <group position={[0.6, 1.02, -0.27]}>
           <mesh position={[0, 0.014, 0]}><cylinderGeometry args={[0.12, 0.13, 0.03, 16]} /><meshStandardMaterial color="#625748" /></mesh>
@@ -85,14 +94,10 @@ function Workspace({ active, pointer, dark, onReady }: SceneProps) {
           <mesh position={[0, 0.48, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.18, 24]} /><meshStandardMaterial color="#ffdda0" emissive="#ffbb64" emissiveIntensity={1.5} side={2} /></mesh>
           <pointLight position={[0, 0.43, 0]} intensity={dark ? 1.1 : 0.45} color="#ffcf89" distance={2.4} decay={2} />
         </group>
-        <group position={[-0.68, 1.1, 0.17]}>
-          <mesh><cylinderGeometry args={[0.085, 0.07, 0.15, 16]} /><meshStandardMaterial color="#ddd8c9" /></mesh>
-          <mesh position={[0, 0.078, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.068, 16]} /><meshStandardMaterial color="#594437" /></mesh>
-          <mesh position={[-0.09, 0.005, 0]}><torusGeometry args={[0.05, 0.015, 6, 12]} /><meshStandardMaterial color="#ddd8c9" /></mesh>
-        </group>
         <Box position={[0.53, 1.04, 0.2]} size={[0.28, 0.055, 0.23]} color="#8b9fa6" radius={0.01} />
         <Box position={[0.53, 1.074, 0.2]} size={[0.25, 0.018, 0.21]} color="#eee8d8" radius={0.005} />
       </group>
+      <DeveloperCharacter clock={elapsed} active={active} />
       <Pine />
       {[[1.1, 0.12, 0.97], [1.45, 0.13, 0.8], [-1.53, 0.1, 0.97]].map((p, i) => <mesh key={i} position={p as [number, number, number]} scale={[0.22 + i * 0.02, 0.12, 0.18]}><icosahedronGeometry args={[1, 1]} /><meshStandardMaterial color="#e8eeea" roughness={1} /></mesh>)}
       <group position={[-1.24, 0.29, 0.68]}>
