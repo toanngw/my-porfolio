@@ -93,7 +93,7 @@ The persistent workspace accompanies six hash-linked views. Local typography, a 
 - Persistent original procedural workspace with a matching static fallback.
 - Neutral dark and ivory light themes with warm accents.
 - Compact content, quiet separators, and small rounded controls.
-- Ambient motion respects pause, reduced motion, and tab visibility.
+- Ambient motion follows reduced motion by default; explicit Play/Pause overrides the ambient preference, and hidden tabs suspend rendering.
 
 ## Colors
 
@@ -176,7 +176,7 @@ A small “More below” button occupies a dedicated strip below the scroll view
 
 The original procedural scene persists across views. Pointer movement and arrow keys alter its orientation; Escape resets it. Touch retains vertical panning. A locally rendered image of the same original Three.js model (`public/studio-fallback.webp`) remains visible before readiness and when WebGL is unavailable. The scene is decorative context with an accessible description, never a substitute for work evidence.
 
-Canvas snowfall appears only in dark mode. Scene and snow animation loops run only with normal motion, user motion enabled, and an active tab; pause, reduced motion, and hidden tabs freeze ambient movement. The scene uses demand rendering while inactive. Reduced-motion preference subscribes to media-query changes and updates during the session without a reload. View transitions use 180ms and small vertical offsets only after pointer navigation and when pause/reduced-motion settings allow; keyboard navigation is immediate. Project selection uses 160ms/4px after pointer activation and respects reduced motion. Snow visibility uses 250ms opacity and poster readiness uses 180ms; reduced motion shortens these opacity transitions to 150ms. Theme preference initializes before hydration and follows system preference until explicitly saved.
+Canvas snowfall appears only in dark mode. Scene and snow share one effective motion preference: system by default, or explicit play/pause. Reduced motion freezes ambient movement by default; the user can explicitly choose Resume to enable it. Hidden tabs always suspend both loops. UI transitions still honor reduced motion independently. The scene uses demand rendering while inactive. Reduced-motion preference subscribes to media-query changes and updates during the session without a reload. View transitions use 180ms and small vertical offsets only after pointer navigation and when pause/reduced-motion settings allow; keyboard navigation is immediate. Project selection uses 160ms/4px after pointer activation and respects reduced motion. Snow visibility uses 250ms opacity and poster readiness uses 180ms; reduced motion shortens these opacity transitions to 150ms. Theme preference initializes before hydration and follows system preference until explicitly saved.
 
 ## Do's and Don'ts
 
@@ -185,7 +185,7 @@ Canvas snowfall appears only in dark mode. Scene and snow animation loops run on
 - **Do** preserve the six hash-linked views and persistent workspace.
 - **Do** keep interactive controls at least 44px high and provide visible keyboard focus.
 - **Do** preserve both themes, local fonts, and the supplied portrait identity.
-- **Do** stop ambient animation loops for user pause, reduced motion, or hidden tabs.
+- **Do** stop ambient animation loops for user pause or hidden tabs; respect reduced motion by default and allow explicit user opt-in.
 
 ### Don't:
 

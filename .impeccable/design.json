@@ -450,7 +450,7 @@
       "Persistent original procedural workspace with a matching static fallback.",
       "Neutral dark and ivory light themes with warm accents.",
       "Compact content, quiet separators, and small rounded controls.",
-      "Ambient motion respects pause, reduced motion, and tab visibility."
+      "Ambient motion follows reduced motion by default; explicit Play/Pause overrides the ambient preference, and hidden tabs suspend rendering."
     ],
     "rules": [
       {
@@ -473,7 +473,7 @@
       "Do preserve the six hash-linked views and persistent workspace.",
       "Do keep interactive controls at least 44px high and provide visible keyboard focus.",
       "Do preserve both themes, local fonts, and the supplied portrait identity.",
-      "Do stop ambient animation loops for user pause, reduced motion, or hidden tabs."
+      "Do stop ambient animation loops for user pause or hidden tabs; respect reduced motion by default and allow explicit user opt-in."
     ],
     "donts": [
       "Don't replace the original scene with borrowed reference-site assets or code.",

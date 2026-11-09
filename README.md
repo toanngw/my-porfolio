@@ -32,7 +32,7 @@ npm start
 - `src/lib/preferences.ts`: theme, pause, and document visibility subscriptions.
 - `src/app/globals.css`: semantic theme tokens and responsive viewport layout.
 
-The workspace stays mounted across view changes. Ambient animation stops for reduced motion, the pause control, and hidden tabs. The 3D renderer is split from the initial application bundle; its static render is visible immediately and remains available when WebGL is unsupported. The original portrait is retained beside a transparent background-removal edit. See `docs/assets.md` for provenance.
+The workspace stays mounted across view changes. Ambient animation follows the system reduced-motion preference by default. The motion control explicitly enables or pauses both the scene and snow, persists that choice, and always stops rendering in hidden tabs. The 3D renderer is split from the initial application bundle; its static render is visible immediately and remains available when WebGL is unsupported. The original portrait is retained beside a transparent background-removal edit. See `docs/assets.md` for provenance.
 
 Desktop uses a fixed viewport. On short screens, mobile, and enlarged layouts, only the content panel scrolls; essential content is not clipped or omitted. Navigation remains outside that panel.
 

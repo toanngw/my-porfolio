@@ -35,8 +35,8 @@ function Workspace({ active, pointer, dark, onReady }: SceneProps) {
     const step = Math.min(delta, 0.05);
     if (active) elapsed.current += step;
     const time = elapsed.current;
-    const desiredY = active ? Math.sin(time * 0.62) * 0.045 : 0;
-    const desiredYaw = -0.12 + (active ? Math.sin(time * 0.25) * 0.065 + pointer.current.x * 0.18 : 0);
+    const desiredY = active ? Math.sin(time * 0.8) * 0.07 : 0;
+    const desiredYaw = -0.12 + (active ? Math.sin(time * 0.36) * 0.1 + pointer.current.x * 0.18 : 0);
     if (active) {
       object.position.y = MathUtils.damp(object.position.y, desiredY, 4, step);
       object.rotation.y = MathUtils.damp(object.rotation.y, desiredYaw, 4.5, step);

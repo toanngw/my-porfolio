@@ -2,19 +2,18 @@
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useCallback, useRef, useState } from "react";
-import { useDarkTheme, useMotionPaused, usePageVisible, useReducedMotionPreference } from "@/lib/preferences";
+import { useDarkTheme, useMotionPaused, usePageVisible } from "@/lib/preferences";
 const Scene = dynamic(() => import("./workspace-scene"), { ssr: false });
 
 export function WorkspaceStage() {
   const pointer = useRef({ x: 0, y: 0 });
   const [ready, setReady] = useState(false);
   const [paused] = useMotionPaused();
-  const reduced = useReducedMotionPreference();
   const visible = usePageVisible();
   const dark = useDarkTheme();
   const onReady = useCallback(() => setReady(true), []);
   const onUnavailable = useCallback(() => setReady(false), []);
-  const active = !paused && !reduced && visible;
+  const active = !paused && visible;
   return <div className="workspace-stage" data-ready={ready} data-motion={active ? "running" : "paused"}>
     <div className="scene-frame" role={ready ? "group" : "img"} aria-label={ready && active ? "Interactive snowy workspace. Move your pointer, or use arrow keys to explore. Escape resets the view." : "Miniature snowy workspace with a laptop, warm lamp, and evergreen tree."} tabIndex={ready && active ? 0 : -1} onPointerMove={event => {
       if (event.pointerType === "touch" || !active) return;

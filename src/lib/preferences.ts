@@ -14,15 +14,25 @@ function subscribePause(callback: () => void) {
   window.addEventListener("storage", callback);
   return () => { window.removeEventListener("studio-motion", callback); window.removeEventListener("storage", callback); };
 }
-let sessionPaused = false;
-function getPaused() {
-  try { return localStorage.getItem("studio-motion-paused") === "true"; } catch { return sessionPaused; }
+type MotionChoice = "play" | "pause" | "system";
+let sessionChoice: MotionChoice = "system";
+function getMotionChoice(): MotionChoice {
+  try {
+    const saved = localStorage.getItem("studio-motion-choice");
+    if (saved === "play" || saved === "pause") return saved;
+    return localStorage.getItem("studio-motion-paused") === "true" ? "pause" : "system";
+  } catch { return sessionChoice; }
 }
 export function useMotionPaused() {
-  const paused = useSyncExternalStore(subscribePause, getPaused, () => false);
+  const choice = useSyncExternalStore(subscribePause, getMotionChoice, () => "system" as const);
+  const reduced = useReducedMotionPreference();
+  const paused = choice === "pause" || (choice === "system" && reduced);
   return [paused, () => {
-    sessionPaused = !getPaused();
-    try { localStorage.setItem("studio-motion-paused", String(sessionPaused)); } catch { /* Session preference still works. */ }
+    sessionChoice = paused ? "play" : "pause";
+    try {
+      localStorage.setItem("studio-motion-choice", sessionChoice);
+      localStorage.removeItem("studio-motion-paused");
+    } catch { /* Session preference still works. */ }
     window.dispatchEvent(new Event("studio-motion"));
   }] as const;
 }
