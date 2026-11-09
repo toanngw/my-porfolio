@@ -13,11 +13,11 @@ function Home() {
   return <>
     <div className="home-identity">
       <div><h1 tabIndex={-1} id="view-title-home">Cao-Toan<br />Nguyen<span className="warm-dot">.</span></h1><p className="home-role">Software Engineer</p></div>
-      <div className="portrait-cutout"><Image src="/avatar-cutout.webp" alt="Cao-Toan Nguyen" fill sizes="(max-width: 480px) 144px, 190px" priority /></div>
+      <div className="portrait-cutout"><Image src="/avatar-cutout.webp" alt="Cao-Toan Nguyen" fill sizes="(max-width: 480px) 112px, (max-width: 800px) 145px, (max-width: 1030px) 120px, 190px" loading="eager" /></div>
     </div>
-    <p className="home-intro">I build backend systems and APIs.<br />A little curiosity, a lot of care, and a journey from Hungary to Vietnam.</p>
-    <p className="home-note">Java backend development, with experience in computer vision.</p>
+    <p className="home-intro">I build backend systems and APIs.<br />A little curiosity, a lot of care, and a passion for building things that matter.</p>
     <div className="action-row"><a href="#projects" className="primary-link">Explore my work <Arrow /></a><a href="/cv.pdf" download="Cao-Toan-Nguyen-CV.pdf" className="text-link">Download CV <Download /></a></div>
+    <p className="home-note">Java backend development, with experience in computer vision.</p>
     <div className="location-note"><span aria-hidden="true" />Ho Chi Minh City, Vietnam</div>
   </>;
 }
@@ -47,7 +47,7 @@ function Projects() {
   const item = projects[selected];
   return <><h1 tabIndex={-1} id="view-title-projects" className="view-title">Selected work<span className="warm-dot">.</span></h1><p className="view-description">Two systems from my professional experience.</p>
     <div className="project-selector" role="group" aria-label="Choose a project">{projects.map((project, index) => <button key={project.title} aria-pressed={selected === index} onClick={event => { setSelected(index); setPointerSelection(event.detail > 0); }}>{index === 0 ? "Backend engineering" : "Computer vision"}</button>)}</div>
-    <div aria-live="polite" aria-atomic="true"><motion.div key={item.title} className="project-detail" initial={pointerSelection && !reduced ? { opacity: 0.6, transform: "translateY(4px)" } : false} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ duration: pointerSelection && !reduced ? 0.16 : 0, ease: [0.23, 1, 0.32, 1] }}><ProjectDiagram type={item.diagram} /><h2>{item.title}</h2><p className="project-context">{item.type}</p><p>{item.description}</p><Tags items={item.technologies} /></motion.div></div>
+    <div aria-live="polite" aria-atomic="true"><motion.div key={item.title} className="project-detail" initial={pointerSelection && !reduced ? { opacity: 0.6, transform: "translateY(4px)" } : false} animate={{ opacity: 1, transform: "translateY(0px)" }} transition={{ duration: pointerSelection && !reduced ? 0.16 : 0, ease: [0.23, 1, 0.32, 1] }}><h2>{item.title}</h2><p className="project-context">{item.type}</p><p>{item.description}</p><ProjectDiagram type={item.diagram} /><Tags items={item.technologies} /></motion.div></div>
   </>;
 }
 function Skills() {

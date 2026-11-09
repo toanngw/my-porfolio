@@ -16,12 +16,12 @@ function subscribePause(callback: () => void) {
 }
 type MotionChoice = "play" | "pause" | "system";
 let sessionChoice: MotionChoice = "system";
-function getMotionChoice(): MotionChoice {
-  try {
-    const saved = localStorage.getItem("studio-motion-choice");
-    if (saved === "play" || saved === "pause") return saved;
-    return localStorage.getItem("studio-motion-paused") === "true" ? "pause" : "system";
-  } catch { return sessionChoice; }
+// Pause belongs to this visit. A stale persisted QA/user pause must not stop
+// the introduction and weather for every later visit. OS reduce remains default.
+function getMotionChoice(): MotionChoice { return sessionChoice; }
+const subscribeClient = () => () => {};
+export function useClientReady() {
+  return useSyncExternalStore(subscribeClient, () => true, () => false);
 }
 export function useMotionPaused() {
   const choice = useSyncExternalStore(subscribePause, getMotionChoice, () => "system" as const);
@@ -29,10 +29,6 @@ export function useMotionPaused() {
   const paused = choice === "pause" || (choice === "system" && reduced);
   return [paused, () => {
     sessionChoice = paused ? "play" : "pause";
-    try {
-      localStorage.setItem("studio-motion-choice", sessionChoice);
-      localStorage.removeItem("studio-motion-paused");
-    } catch { /* Session preference still works. */ }
     window.dispatchEvent(new Event("studio-motion"));
   }] as const;
 }

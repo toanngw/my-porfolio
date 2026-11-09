@@ -1,4 +1,4 @@
 {
-  "prompt": "Origin: transparent canvas render of the original procedural winter workspace, including blocky developer, laptop, lamp, steaming coffee, decorated tree and gifts. Authored in src/components/studio/workspace-scene.tsx and companion components. Captured directly from WebGL, encoded to WebP. No external models, textures, music samples, or craftz.dog assets were used.",
-  "createdAt": "2026-11-09T00:54:15.293884+00:00"
+  "prompt": "Origin: direct transparent WebGL export of the original portfolio workspace. New character interpretation of user-supplied public/reference-image.jpeg: completely new landmark-based facial surface and lip/eye/brow geometry in reference-face.tsx; short dense instanced afro curls in reference-hair.tsx; tan open jacket, off-white hood, teal shirt, silver necklace pendant and stud earring in reference-outfit.tsx. Light mustache and subtle short chin stubble. No dreadlocks, backpack, old facial mesh or thick beard. Uses existing character animation controller. Runtime atmosphere and infinite ground omitted from the static export. Original authored meshes, not an exact likeness reconstruction or imported rigged GLB.",
+  "createdAt": "2026-11-09T08:02:41.440807+00:00"
 }

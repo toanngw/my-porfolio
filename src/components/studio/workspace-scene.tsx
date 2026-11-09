@@ -1,140 +1,181 @@
 "use client";
-import { Component, useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ContactShadows, OrthographicCamera } from "@react-three/drei";
-import { Group, MathUtils, OrthographicCamera as ThreeOrthographicCamera } from "three";
-import { Box } from "./scene-primitives";
+import { ContactShadows, OrbitControls } from "@react-three/drei";
+import { Box3, Group, Mesh, Spherical, Vector3 } from "three";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { DeveloperCharacter } from "./developer-character";
-import { CodeScreen } from "./code-screen";
+import { Coffee } from "./workspace-coffee";
+import { CodingDesk } from "./winter-world";
+import { Atmosphere, InfiniteGround } from "./atmosphere";
+import { sampleBreeze, type Breeze } from "./breeze";
+import { supportsWebGL } from "@/lib/webgl-support";
 
-type SceneProps = { active: boolean; dark: boolean; pointer: RefObject<{ x: number; y: number }>; onReady: () => void; onUnavailable: () => void };
-function Pine() {
-  return <group position={[1.14, 0.08, 0.25]}>
-    <mesh position={[0, 0.34, 0]} castShadow><cylinderGeometry args={[0.07, 0.09, 0.65, 8]} /><meshStandardMaterial color="#81664b" /></mesh>
-    {[{ y: 0.67, r: 0.62, h: 0.9 }, { y: 1.16, r: 0.48, h: 0.86 }, { y: 1.62, r: 0.33, h: 0.77 }].map(({ y, r, h }) => <group key={y}>
-      <mesh position={[0, y, 0]} castShadow receiveShadow><coneGeometry args={[r, h, 9]} /><meshStandardMaterial color="#496459" roughness={1} /></mesh>
-      <mesh position={[0, y + h * 0.13, 0]} castShadow receiveShadow><coneGeometry args={[r * 0.81, h * 0.8, 9]} /><meshStandardMaterial color="#edf1ee" roughness={1} /></mesh>
-    </group>)}
-    {Array.from({ length: 18 }, (_, i) => {
-      const angle = i * 2.4;
-      const y = 0.37 + i * 0.078;
-      const radius = 0.54 - i * 0.022;
-      return <group key={i} position={[Math.cos(angle) * radius, y, Math.sin(angle) * radius]}>
-        <mesh><sphereGeometry args={[i % 3 === 0 ? 0.05 : 0.032, 10, 8]} /><meshStandardMaterial color={i % 3 === 0 ? "#b76c52" : "#e1bc76"} emissive={i % 3 === 0 ? "#5b2414" : "#ad7333"} emissiveIntensity={0.35} roughness={0.45} metalness={0.2} /></mesh>
-        <mesh position={[0, 0.04, 0]}><cylinderGeometry args={[0.008, 0.008, 0.025, 5]} /><meshStandardMaterial color="#a7844c" /></mesh>
-      </group>;
-    })}
-    <group position={[0, 2.08, 0]} rotation={[0, 0, Math.PI / 4]}><Box position={[0, 0, 0]} size={[0.13, 0.13, 0.055]} color="#e5bb72" emissive="#af7a38" radius={0.015} /></group>
-    <Box position={[-0.24, 0.11, 0.43]} size={[0.26, 0.2, 0.23]} color="#a66e54" radius={0.015} />
-    <Box position={[-0.24, 0.115, 0.43]} size={[0.045, 0.21, 0.24]} color="#e6cfab" radius={0.003} />
-    <Box position={[0.16, 0.075, 0.49]} size={[0.21, 0.13, 0.2]} color="#728d88" radius={0.012} />
-    <Box position={[0.16, 0.08, 0.49]} size={[0.22, 0.14, 0.035]} color="#e6cfab" radius={0.003} />
-  </group>;
-}
-function Workspace({ active, pointer, dark, onReady }: SceneProps) {
-  const group = useRef<Group>(null);
-  const cameraRef = useRef<ThreeOrthographicCamera>(null);
-  const elapsed = useRef(0);
+export type SceneCommands = { reset: () => void; key: (key: string) => void };
+type SceneProps = { clock: RefObject<number>; modelUrl: string | null; active: boolean; reduced: boolean; dark: boolean; controls: RefObject<SceneCommands | null>; lampOn: boolean; lampInstant: boolean; onLampToggle: () => void; onReady: () => void; onUnavailable: () => void };
+const CAMERA = new Vector3(5.2, 3.9, -6.3);
+const TARGET = new Vector3(0, 1.18, 0);
+function CameraControls({ active, reduced, controls: commandsRef, compositionRef, grabbedRef }: Pick<SceneProps,"active"|"reduced"|"controls"> & {compositionRef: RefObject<Group|null>;grabbedRef:RefObject<boolean>}) {
+  const controls = useRef<OrbitControlsImpl>(null);
+  const idle = useRef({ interacting: false, resumeAt: 0 });
   const lastSample = useRef(0);
-  const { size, invalidate } = useThree();
+  const intro = useRef({ phase: "warming", frames: 0, delay: 0.2, time: 0, angle: 0 });
+  const previousGrab = useRef(false);
+  const cancelIntro = useRef(() => {});
+  const { size, invalidate, get } = useThree();
+  const fit = Math.min(size.width / 4.7, size.height / 3.5);
+  const previousFit = useRef(fit);
   useEffect(() => {
-    cameraRef.current?.lookAt(0, 0.9, 0);
-    invalidate();
-  }, [size.width, size.height, invalidate]);
-  useEffect(() => { onReady(); }, [onReady]);
-  useFrame(({ gl }, delta) => {
-    const object = group.current;
-    if (!object) return;
-    const step = Math.min(delta, 0.05);
-    if (active) elapsed.current += step;
-    const time = elapsed.current;
-    const desiredY = active ? Math.sin(time * 0.8) * 0.07 : 0;
-    // An unwrapped angle keeps each 60-second revolution seamless. Pointer input
-    // adds a damped offset without taking over the continuous turntable motion.
-    const desiredYaw = -0.12 + time * Math.PI * 2 / 60 + pointer.current.x * 0.24;
-    if (active) {
-      object.position.y = MathUtils.damp(object.position.y, desiredY, 4, step);
-      object.rotation.y = MathUtils.damp(object.rotation.y, desiredYaw, 4.5, step);
-      object.rotation.x = MathUtils.damp(object.rotation.x, pointer.current.y * 0.045, 4.5, step);
+    const camera = get().camera;
+    const ratio = camera.zoom / previousFit.current;
+    camera.zoom = previousFit.current === fit && camera.zoom === 70 ? fit : fit * Math.max(0.7,Math.min(2.1,ratio));
+    previousFit.current = fit;
+    camera.updateProjectionMatrix(); invalidate();
+  },[get,fit,invalidate]);
+  useEffect(() => {
+    const camera = get().camera;
+    const orbit = controls.current;
+    if (!orbit) return;
+    // Freeze the turntable at its current angle. Manual input takes priority;
+    // neither the camera nor the composition translates at interruption.
+    cancelIntro.current = () => {
+      if (intro.current.phase === "complete" || intro.current.phase === "cancelled") return;
+      intro.current.phase = "cancelled";
+      orbit.autoRotate = false;
+      idle.current.resumeAt = performance.now()+3000;
+    };
+    const immediate = (update: () => void) => {
+      cancelIntro.current();
+      orbit.autoRotate = false; orbit.enableDamping = false;
+      orbit.update(); update(); camera.updateProjectionMatrix(); orbit.update();
+      orbit.enableDamping = true;
+      idle.current.resumeAt = performance.now()+3000; invalidate();
+    };
+    const reset = () => immediate(() => {if(compositionRef.current)compositionRef.current.rotation.y=0;camera.position.copy(CAMERA);camera.zoom=fit;orbit.target.copy(TARGET);});
+    commandsRef.current = {reset, key: key => {
+      if (key === "Escape" || key === "Home") {reset();return;}
+      immediate(() => {
+        if (key === "+" || key === "=" || key === "-") camera.zoom = Math.max(fit*0.7, Math.min(fit*2.1,camera.zoom*(key === "-" ? 0.9 : 1.1)));
+        else {
+          const spherical = new Spherical().setFromVector3(camera.position.clone().sub(orbit.target));
+          spherical.theta += key === "ArrowLeft" ? 0.16 : key === "ArrowRight" ? -0.16 : 0;
+          spherical.phi = Math.max(0.4,Math.min(1.4,spherical.phi+(key === "ArrowUp" ? -0.1 : key === "ArrowDown" ? 0.1 : 0)));
+          camera.position.copy(new Vector3().setFromSpherical(spherical).add(orbit.target));
+        }
+      });
+    }};
+    return () => {commandsRef.current=null;};
+  },[get,commandsRef,fit,invalidate,compositionRef]);
+  useFrame(({gl,camera},delta) => {
+    const orbit = controls.current;
+    if (!orbit) return;
+    const state = intro.current;
+    if (reduced && state.phase !== "complete" && state.phase !== "cancelled") {
+      cancelIntro.current(); state.phase = "complete";
     }
-    // Lightweight observability for the renderer fallback and browser validation.
-    if (time - lastSample.current > 0.25 || !active) {
-      gl.domElement.setAttribute("data-idle-time", time.toFixed(2));
-      gl.domElement.setAttribute("data-yaw", object.rotation.y.toFixed(4));
-      lastSample.current = time;
+    if (grabbedRef.current) cancelIntro.current();
+    if (previousGrab.current && !grabbedRef.current) {
+      idle.current.interacting = false; idle.current.resumeAt = performance.now()+3000;
     }
-  });
-  const wood = "#af8260";
-  const frame = "#78563e";
+    previousGrab.current = grabbedRef.current;
+    // Compile/render the first frames before spending the visible intro budget.
+    // Otherwise a slow first shader compilation can consume the entire spin.
+    if (state.phase === "warming" && ++state.frames >= 3) state.phase = "pending";
+    if (state.phase === "pending" && active) {
+      state.delay = Math.max(0, state.delay - Math.min(delta,0.05));
+      if (state.delay === 0) {state.phase = "running";delta=0;}
+    }
+    if (state.phase === "running" && active && compositionRef.current) {
+      state.time = Math.min(1.8, state.time + Math.min(delta,0.05));
+      const p = state.time / 1.8;
+      // Three exact turns in 1.8 seconds: fast at entry, easeOutCubic to rest.
+      // Only the centered parent rotates; camera, ground and atmosphere stay still.
+      state.angle = Math.PI * 6 * (1 - (1 - p) ** 3);
+      compositionRef.current.rotation.y = state.angle;
+      if (p === 1) {
+        compositionRef.current.rotation.y = 0;
+        state.phase = "complete"; idle.current.resumeAt = performance.now()+1500;
+      }
+    }
+    orbit.autoRotate = active && state.phase !== "warming" && state.phase !== "running" && state.phase !== "pending" && !grabbedRef.current && !idle.current.interacting && performance.now() >= idle.current.resumeAt;
+    lastSample.current += delta;
+    if (lastSample.current > 0.25 || !active) {
+      gl.domElement.dataset.intro = state.phase;
+      gl.domElement.dataset.introTime = state.time.toFixed(3);
+      gl.domElement.dataset.pivot = compositionRef.current?.position.toArray().join(",") ?? "";
+      gl.domElement.dataset.introTurns = (state.angle / (Math.PI * 2)).toFixed(3);
+      gl.domElement.dataset.autoRotate = String(orbit.autoRotate);
+      gl.domElement.dataset.camera = camera.position.toArray().map(n=>n.toFixed(3)).join(",");
+      gl.domElement.dataset.zoom = camera.zoom.toFixed(2);
+      lastSample.current = 0;
+    }
+  }, -1.5);
+  return <OrbitControls ref={controls} makeDefault target={TARGET} enablePan={false} enableDamping dampingFactor={0.075} rotateSpeed={0.65} zoomSpeed={0.7} minZoom={fit*0.7} maxZoom={fit*2.1} minPolarAngle={0.4} maxPolarAngle={1.4} autoRotateSpeed={0.65} onStart={() => {cancelIntro.current();idle.current.interacting=true; if(controls.current)controls.current.autoRotate=false;}} onEnd={() => {idle.current.interacting=false;idle.current.resumeAt=performance.now()+3000;}} />;
+}
+function Workspace({ active, dark, clock: elapsed, onReady, ...props }: SceneProps) {
+  const sample = useRef(0), readyFrames = useRef(0);
+  const compositionRef = useRef<Group>(null), grabbedRef = useRef(false);
+  const offsetRef = useRef<Group>(null), artworkRef = useRef<Group>(null);
+  useLayoutEffect(() => {
+    const turntable = compositionRef.current, offset = offsetRef.current, artwork = artworkRef.current;
+    if (!turntable || !offset || !artwork) return;
+    artwork.updateWorldMatrix(true, true);
+    const bounds = new Box3(), part = new Box3();
+    // Measure the actual opaque figurine and furniture, excluding invisible
+    // touch targets, steam, lights, atmosphere and the shadow receiver.
+    artwork.traverse(object => {
+      const mesh = object as Mesh;
+      if (!mesh.isMesh || !mesh.castShadow) return;
+      mesh.geometry.computeBoundingBox();
+      if (mesh.geometry.boundingBox) bounds.union(part.copy(mesh.geometry.boundingBox).applyMatrix4(mesh.matrixWorld));
+    });
+    if (bounds.isEmpty()) return;
+    const center = bounds.getCenter(new Vector3()); center.y = 0;
+    turntable.position.copy(center); offset.position.copy(center).negate();
+    turntable.userData.horizontalBounds = [bounds.min.x,bounds.max.x,bounds.min.z,bounds.max.z];
+  }, []);
+  const breeze = useRef<Breeze>({strength:0,phase:0,x:0,z:0});
+  useFrame(({gl,invalidate},delta) => {
+    if (readyFrames.current < 2) {
+      readyFrames.current++;
+      if (readyFrames.current === 2) onReady(); else invalidate();
+    }
+    sampleBreeze(elapsed.current,breeze.current);
+    sample.current+=delta;
+    if(sample.current>0.25 || !active){gl.domElement.dataset.idleTime=elapsed.current.toFixed(2);gl.domElement.dataset.wind=breeze.current.strength.toFixed(3);gl.domElement.dataset.drawCalls=String(gl.info.render.calls);gl.domElement.dataset.triangles=String(gl.info.render.triangles);sample.current=0;}
+  },-2);
+  const ambient = {clock:elapsed,active,breeze,grabbedRef};
   return <>
-    <OrthographicCamera ref={cameraRef} makeDefault position={[5.4, 4.2, 6]} zoom={Math.min(size.width / 5.65, size.height / 3.85)} near={0.1} far={100} />
-    <ambientLight intensity={dark ? 1.0 : 1.3} />
-    <hemisphereLight args={["#d6e5f0", "#8c7262", 1.3]} />
-    <directionalLight position={[-3, 6, 5]} intensity={2.8} color="#fff0d9" />
-    <directionalLight position={[4, 3, -3]} intensity={1.3} color="#c5d8eb" />
-    <group ref={group} rotation={[0, -0.12, 0]}>
-      <Box position={[0, -0.13, 0]} size={[3.7, 0.3, 2.85]} color="#7a776e" radius={0.15} />
-      <Box position={[0, 0.045, 0]} size={[3.72, 0.09, 2.87]} color="#e9eee9" radius={0.12} />
-      <Box position={[-0.47, 0.145, -0.26]} size={[2.22, 0.13, 1.9]} color={frame} />
-      {Array.from({ length: 7 }, (_, i) => <Box key={i} position={[-0.47, 0.223, -1.04 + i * 0.26]} size={[2.15, 0.035, 0.25]} color={i % 2 ? "#b88e6a" : wood} radius={0.008} />)}
-      <group position={[-0.49, 0, -0.08]}>
-        <Box position={[0, 0.95, 0]} size={[1.78, 0.12, 0.92]} color={wood} radius={0.04} />
-        {[-0.73, 0.73].flatMap(x => [-0.31, 0.31].map(z => <Box key={`${x}-${z}`} position={[x, 0.57, z]} size={[0.07, 0.72, 0.07]} color={frame} />))}
-        <Box position={[-0.15, 1.033, -0.02]} size={[0.71, 0.035, 0.46]} color="#5e6b71" radius={0.02} />
-        <Box position={[-0.15, 1.051, -0.01]} size={[0.54, 0.008, 0.27]} color="#3e4b50" radius={0.01} />
-        {Array.from({ length: 4 }, (_, row) => Array.from({ length: 9 }, (_, col) => <Box key={`${row}-${col}`} position={[-0.39 + col * 0.058, 1.059, -0.11 + row * 0.05]} size={[0.042, 0.008, 0.035]} color="#a2b1b1" radius={0.003} />))}
-        <group position={[-0.15, 1.28, -0.23]} rotation={[-0.16, 0, 0]}>
-          <Box position={[0, 0, 0]} size={[0.72, 0.48, 0.035]} color="#44545b" radius={0.025} />
-          <CodeScreen clock={elapsed} active={active} />
-        </group>
-        <group position={[0.6, 1.02, -0.27]}>
-          <mesh position={[0, 0.014, 0]}><cylinderGeometry args={[0.12, 0.13, 0.03, 16]} /><meshStandardMaterial color="#625748" /></mesh>
-          <mesh position={[0, 0.29, 0]}><cylinderGeometry args={[0.016, 0.016, 0.55, 8]} /><meshStandardMaterial color="#625748" /></mesh>
-          <mesh position={[0, 0.57, 0]}><coneGeometry args={[0.22, 0.19, 24]} /><meshStandardMaterial color="#c79552" roughness={0.65} /></mesh>
-          <mesh position={[0, 0.48, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.18, 24]} /><meshStandardMaterial color="#ffdda0" emissive="#ffbb64" emissiveIntensity={1.5} side={2} /></mesh>
-          <pointLight position={[0, 0.43, 0]} intensity={dark ? 1.1 : 0.45} color="#ffcf89" distance={2.4} decay={2} />
-        </group>
-        <Box position={[0.53, 1.04, 0.2]} size={[0.28, 0.055, 0.23]} color="#8b9fa6" radius={0.01} />
-        <Box position={[0.53, 1.074, 0.2]} size={[0.25, 0.018, 0.21]} color="#eee8d8" radius={0.005} />
-      </group>
-      <DeveloperCharacter clock={elapsed} active={active} />
-      <Pine />
-      {[[1.1, 0.12, 0.97], [1.45, 0.13, 0.8], [-1.53, 0.1, 0.97]].map((p, i) => <mesh key={i} position={p as [number, number, number]} scale={[0.22 + i * 0.02, 0.12, 0.18]}><icosahedronGeometry args={[1, 1]} /><meshStandardMaterial color="#e8eeea" roughness={1} /></mesh>)}
-      <group position={[-1.24, 0.29, 0.68]}>
-        <Box position={[0, 0, 0]} size={[0.34, 0.16, 0.3]} color="#819293" />
-        <Box position={[0, 0.18, 0]} size={[0.34, 0.16, 0.3]} color="#9cadac" />
-        {[0, 0.18].map(y => <mesh key={y} position={[-0.09, y, 0.153]}><sphereGeometry args={[0.015, 6, 6]} /><meshStandardMaterial color="#e7e6c4" emissive="#b8bd89" /></mesh>)}
-      </group>
+    <ambientLight intensity={dark ? 0.55 : 0.85} />
+    <hemisphereLight args={["#c7dcf2","#9a7d65",1.2]} />
+    <InfiniteGround dark={dark} />
+    <group ref={compositionRef} name="workspace-turntable" position={[-0.48,0,0.2]}>
+    <group ref={offsetRef} position={[0.48,0,-0.2]}>
+    <directionalLight position={[-3,6,-4]} intensity={2.6} color="#fff0d7" castShadow shadow-intensity={0.32} shadow-radius={4} shadow-blurSamples={8} shadow-mapSize={[1024,1024]} shadow-camera-left={-3.5} shadow-camera-right={3.5} shadow-camera-top={4} shadow-camera-bottom={-3} shadow-normalBias={0.035} shadow-bias={-0.0003} />
+    <directionalLight position={[4,3,4]} intensity={1.6} color="#a8c7e8" />
+    <group ref={artworkRef} name="workspace-artwork">
+    <CodingDesk {...ambient} lampOn={props.lampOn} lampInstant={props.lampInstant} onLampToggle={props.onLampToggle} />
+    {props.modelUrl ? <DeveloperCharacter {...ambient} modelUrl={props.modelUrl} /> : <group position={[-0.15,1.49,0.11]}><Coffee {...ambient} /></group>}
     </group>
-    <ContactShadows position={[0, -0.4, 0]} opacity={dark ? 0.4 : 0.28} scale={7} blur={2.5} far={4} resolution={256} frames={1} color="#171819" />
+    <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={1} color="#08080b" />
+    </group></group>
+    <Atmosphere {...ambient} dark={dark} />
+    <CameraControls active={active} reduced={props.reduced} controls={props.controls} compositionRef={compositionRef} grabbedRef={grabbedRef} />
   </>;
 }
-class RenderBoundary extends Component<{ children: ReactNode; fallback: ReactNode; onError: () => void }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() { return { failed: true }; }
-  componentDidCatch() { this.props.onError(); }
-  render() { return this.state.failed ? this.props.fallback : this.props.children; }
+class RenderBoundary extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}> {
+  state={failed:false};
+  static getDerivedStateFromError(){return{failed:true};}
+  componentDidCatch(){this.props.onError();}
+  render(){return this.state.failed ? null : this.props.children;}
 }
-function canRender() {
-  try {
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("webgl2");
-    if (!context) return false;
-    context.getExtension("WEBGL_lose_context")?.loseContext();
-    return true;
-  } catch { return false; }
+export default function WorkspaceScene(props:SceneProps) {
+  const [supported,setSupported]=useState(supportsWebGL);
+  if(!supported)return null;
+  return <RenderBoundary onError={props.onUnavailable}><Canvas shadows="variance" orthographic camera={{position:CAMERA.toArray(),zoom:70,near:0.1,far:100}} dpr={[1,1.5]} frameloop={props.active ? "always" : "demand"} gl={{antialias:true,alpha:true,powerPreference:"low-power"}} fallback={null} onCreated={({gl})=>{gl.setClearColor(0x000000,0);gl.domElement.setAttribute("aria-hidden","true");}}><ContextGuard onLost={()=>{setSupported(false);props.onUnavailable();}} /><Workspace {...props} /></Canvas></RenderBoundary>;
 }
-export default function WorkspaceScene(props: SceneProps) {
-  const [supported, setSupported] = useState(canRender);
-  if (!supported) return null;
-  return <RenderBoundary fallback={null} onError={props.onUnavailable}><Canvas orthographic camera={{ position: [5.4, 4.2, 6], zoom: 70, near: 0.1, far: 100 }} dpr={[1, 1.5]} frameloop={props.active ? "always" : "demand"} gl={{ antialias: true, alpha: true, powerPreference: "low-power" }} fallback={null} onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); gl.domElement.setAttribute("aria-hidden", "true"); }}><ContextGuard onLost={() => { setSupported(false); props.onUnavailable(); }} /><Workspace {...props} /></Canvas></RenderBoundary>;
-}
-function ContextGuard({ onLost }: { onLost: () => void }) {
-  const gl = useThree(state => state.gl);
-  useEffect(() => {
-    const canvas = gl.domElement;
-    canvas.addEventListener("webglcontextlost", onLost);
-    return () => canvas.removeEventListener("webglcontextlost", onLost);
-  }, [gl, onLost]);
+function ContextGuard({onLost}:{onLost:()=>void}) {
+  const gl=useThree(state=>state.gl);
+  useEffect(()=>{const canvas=gl.domElement;canvas.addEventListener("webglcontextlost",onLost);return()=>canvas.removeEventListener("webglcontextlost",onLost);},[gl,onLost]);
   return null;
 }
