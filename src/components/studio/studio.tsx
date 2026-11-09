@@ -1,11 +1,11 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { studioAudio } from "@/lib/studio-audio";
-import { createStory, skipStory } from "./character-story";
+import { createStory, restartStory, skipStory } from "./character-story";
 import { CinematicStage } from "./cinematic-stage";
 import { Mark } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useClientReady, useReducedMotionPreference } from "@/lib/preferences";
+import { useReducedMotionPreference } from "@/lib/preferences";
 import { viewFromHash, viewLabels, views, type View } from "@/lib/portfolio";
 import { WorkspaceStage } from "./workspace-stage";
 import { ViewContent } from "./view-content";
@@ -22,16 +22,33 @@ function subscribeNavigation(callback: () => void) {
 const getView = () => viewFromHash(window.location.hash);
 export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
-  const reduced = useReducedMotionPreference(),clientReady=useClientReady();
-  const story=useRef(createStory()),focusAfterSkip=useRef(false);
+  const reduced = useReducedMotionPreference();
+  const story=useRef(createStory()),focusAfterSkip=useRef(false),sceneUnavailable=useRef(false);
   const [introComplete,setIntroComplete]=useState(false);
   const [navigationMotion,setNavigationMotion]=useState(false);
   const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null);
+  const restart=useCallback(()=>{
+    restartStory(story.current);
+    if(sceneUnavailable.current)skipStory(story.current);
+    shell.current?.style.setProperty('--story-reveal',sceneUnavailable.current?'1':'0');
+    setIntroComplete(sceneUnavailable.current);
+  },[]);
+  const previousView=useRef(view);
+  useEffect(()=>{
+    if(view==='home'&&previousView.current!=='home')restart();
+    previousView.current=view;
+  },[view,restart]);
+  useEffect(()=>{
+    const revisit=(event:PageTransitionEvent)=>{
+      if(event.persisted&&viewFromHash(window.location.hash)==='home')restart();
+    };
+    window.addEventListener('pageshow',revisit);
+    return()=>window.removeEventListener('pageshow',revisit);
+  },[restart]);
   const finish=useCallback(()=>setIntroComplete(true),[]);
   const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link");skipStory(story.current);setIntroComplete(true);},[]);
+  const unavailable=useCallback(()=>{sceneUnavailable.current=true;skip();},[skip]);
   const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
-  useEffect(()=>{if(clientReady&&reduced)skip();},[clientReady,reduced,skip]);
-  useEffect(()=>{const timeout=setTimeout(()=>{if(!story.current.started)skip();},10000);return()=>clearTimeout(timeout);},[skip]);
   const clock = useRef(0);
   const content = useRef<HTMLDivElement>(null);
   useLayoutEffect(()=>{
@@ -40,12 +57,16 @@ export function Studio() {
     }
   },[introComplete]);
   const goTo = useCallback((target: View, fromScroll = false) => {
-    if(viewFromHash(window.location.hash)===target)return;
+    if(viewFromHash(window.location.hash)===target){
+      if(target==='home')restart();
+      return;
+    }
     setNavigationMotion(true);
     window.history[fromScroll?"replaceState":"pushState"](null,"",`#${target}`);
     window.dispatchEvent(new Event("popstate-scroll"));
-  }, []);
+  }, [restart]);
   return <div ref={shell} className="studio-app" data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
+    studioAudio.prepare();
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const anchor = (event.target as Element).closest("a");
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
@@ -59,7 +80,7 @@ export function Studio() {
         <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={skip}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
           {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}

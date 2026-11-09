@@ -19,7 +19,7 @@ const CAMERA = new Vector3(5.2, 2.72, -6.3).add(TARGET);
 const CAMERA_OPTIONS={position:CAMERA.toArray(),zoom:70,near:0.01,far:200,manual:true};
 const MIN_ZOOM=0.45,MAX_ZOOM=2.5;
 const WORLD_UP=new Vector3(0,1,0);
-function CameraControls({active,reduced,controls:commandsRef,story,anchor,interaction}:Pick<SceneProps,"active"|"reduced"|"controls"|"story"|"anchor"|"interaction">){
+function CameraControls({active,controls:commandsRef,story,anchor,interaction}:Pick<SceneProps,"active"|"controls"|"story"|"anchor"|"interaction">){
  const controls=useRef<TrackballControlsImpl>(null),idle=useRef({interacting:false,resumeAt:0}),fit=useRef(70),previousFit=useRef(0),sample=useRef(0);
  const {size,get,invalidate}=useThree();
  useEffect(()=>{
@@ -54,8 +54,8 @@ function CameraControls({active,reduced,controls:commandsRef,story,anchor,intera
   // Off-axis orthographic projection places the scene at its layout anchor while
   // retaining the entire viewport as drawable space, including outside the slot.
   const projection=camera as OrthographicCamera;const shiftX=(size.width/2-cx)/camera.zoom,shiftY=(cy-size.height/2)/camera.zoom;projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
-  const autoRotate=story.current.released&&active&&!reduced&&!idle.current.interacting&&performance.now()>=idle.current.resumeAt;
-  if(autoRotate){const angle=-Math.min(delta,.05)*.035;camera.position.sub(orbit.target).applyAxisAngle(WORLD_UP,angle).add(orbit.target);camera.up.applyAxisAngle(WORLD_UP,angle);}
+  const autoRotate=story.current.released&&active&&!idle.current.interacting&&performance.now()>=idle.current.resumeAt;
+  if(autoRotate){const angle=-Math.min(delta,.05)*.21;camera.position.sub(orbit.target).applyAxisAngle(WORLD_UP,angle).add(orbit.target);camera.up.applyAxisAngle(WORLD_UP,angle);}
   sample.current+=delta;if(sample.current>.2){
    sample.current=0;gl.domElement.dataset.camera=camera.position.toArray().map(n=>n.toFixed(3)).join(",");gl.domElement.dataset.cameraUp=camera.up.toArray().map(n=>n.toFixed(3)).join(",");gl.domElement.dataset.zoom=camera.zoom.toFixed(2);gl.domElement.dataset.anchor=[cx,cy,width,height].map(n=>n.toFixed(1)).join(",");gl.domElement.dataset.autoRotate=String(autoRotate);
   }
@@ -113,7 +113,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={Infinity} color="#08080b" />
     </group></group>
     <Atmosphere {...ambient} dark={dark} />
-    <CameraControls anchor={props.anchor} interaction={props.interaction} active={active} reduced={props.reduced} controls={props.controls} story={props.story} />
+    <CameraControls anchor={props.anchor} interaction={props.interaction} active={active} controls={props.controls} story={props.story} />
   </>;
 }
 class RenderBoundary extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}> {

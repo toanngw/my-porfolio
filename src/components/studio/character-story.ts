@@ -1,17 +1,23 @@
 /** One state machine owns the actor and page reveal; camera input is independent. */
 export type StoryPhase='settle'|'stand'|'exit'|'approach'|'wave'|'return-front'|'return-side'|'sit'|'pull-reach'|'pull-lift'|'pull-release'|'work'|'stare'|'exclaim'|'hands-up'|'bonk'|'recover'|'frustrated'|'break-stand'|'wander-out'|'wander-front'|'calm'|'wander-back'|'wander-home'|'break-sit';
 export type ActorPose={x:number;z:number;yaw:number;stand:number;gait:number;walk:number;wave:number;pullReach:number;pullLift:number;pullGrip:number;anger:number;stare:number;shake:number;bonk:number;impact:number;bubble:number;swear:number;chair:number};
-export type CharacterStory={phase:StoryPhase;time:number;elapsed:number;cycle:number;started:boolean;skipped:boolean;released:boolean;reveal:number;pose:ActorPose};
-export function createStory():CharacterStory{return {phase:'settle',time:0,elapsed:0,cycle:0,started:false,skipped:false,released:false,reveal:0,pose:{x:-.65,z:.64,yaw:0,stand:0,gait:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0}};}
+export type CharacterStory={phase:StoryPhase;time:number;elapsed:number;cycle:number;greetingVisit:number;started:boolean;skipped:boolean;released:boolean;reveal:number;pose:ActorPose};
+export function createStory():CharacterStory{return {phase:'settle',time:0,elapsed:0,cycle:0,greetingVisit:0,started:false,skipped:false,released:false,reveal:0,pose:{x:-.65,z:.64,yaw:0,stand:0,gait:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0}};}
+export function restartStory(s:CharacterStory){
+ const next=createStory(),pose=s.pose,greetingVisit=s.greetingVisit+1;
+ // Arms and legs hold this pose object, so keep its identity across visits.
+ Object.assign(pose,next.pose);Object.assign(s,next,{pose,greetingVisit});
+}
 export const ease=(n:number)=>{const x=Math.max(0,Math.min(1,n));return x*x*(3-2*x);};
 const sequence:StoryPhase[]=['settle','stand','exit','approach','wave','pull-reach','pull-lift','pull-release','return-front','return-side','sit','work','stare','exclaim','hands-up','bonk','recover','frustrated','break-stand','wander-out','wander-front','calm','wander-back','wander-home','break-sit'];
 const duration:Record<StoryPhase,number>={settle:.45,stand:1.3,exit:2.1,approach:1.85,wave:2.1,'return-front':1.85,'return-side':2.1,sit:1.2,'pull-reach':.9,'pull-lift':1.8,'pull-release':.95,work:24,stare:.9,exclaim:1.35,'hands-up':1.1,bonk:1.15,recover:1.65,frustrated:1.3,'break-stand':1.4,'wander-out':2.4,'wander-front':2.2,calm:2.4,'wander-back':2.2,'wander-home':2.4,'break-sit':1.4};
 export function skipStory(s:CharacterStory){s.skipped=true;s.released=true;s.reveal=1;s.phase='work';s.time=0;s.started=true;}
 export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
- if(!s.started){s.started=true;if(reduced)skipStory(s);}
+ if(!s.started)s.started=true;
  s.elapsed+=dt;s.time+=dt;
  let length=s.phase==='work'?22+((s.cycle*7+3)%13):duration[s.phase];
- if(reduced&&s.phase!=='work')skipStory(s);
+ // The welcome plays on every visit; reduced motion suppresses the idle cycle.
+ if(reduced&&s.released&&s.phase!=='work')skipStory(s);
  if(s.time>=length){
   s.time-=length;
   if(s.phase==='break-sit'){s.phase='work';s.cycle++;}
