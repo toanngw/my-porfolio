@@ -1,3 +1,5 @@
+export type DoorMotionSound = { update: (progress: number, speed: number) => void; stop: () => void };
+
 /** Shared Web Audio analysis and a short, original navigation click. Recordings stay in HTMLAudioElement. */
 class StudioAudio {
   private context: AudioContext | null = null;
@@ -7,7 +9,7 @@ class StudioAudio {
   private recordings = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
   private voices = new Set<AudioScheduledSourceNode>();
 
-  private async unlock() {
+  private async unlock(gesture = false) {
     if (typeof window === "undefined" || !window.AudioContext) return false;
     if (!this.context) {
       this.context = new AudioContext();
@@ -22,7 +24,7 @@ class StudioAudio {
       this.output.connect(this.limiter).connect(this.analyser).connect(this.context.destination);
     }
     if (this.context.state === "suspended") {
-      if (!navigator.userActivation?.hasBeenActive) return false;
+      if (!gesture && !navigator.userActivation?.hasBeenActive) return false;
       await this.context.resume();
     }
     return this.context.state === "running";
@@ -33,7 +35,52 @@ class StudioAudio {
     source.onended = () => { this.voices.delete(source); source.disconnect(); nodes.forEach(node => node.disconnect()); };
   }
 
-  prepare() { return this.unlock().catch(() => false); }
+  prepare(gesture = false) { return this.unlock(gesture).catch(() => false); }
+
+  /** Stick-slip hinge squeaks: short "keet-keet" bursts while the door moves. */
+  async startDoorMotion(): Promise<DoorMotionSound|null> {
+    if (!(await this.prepare(true)) || !this.context || !this.output) return null;
+    const ctx=this.context,now=ctx.currentTime;
+    const hinge=ctx.createOscillator(),grain=ctx.createBufferSource();
+    const resonance=ctx.createBiquadFilter(),friction=ctx.createBiquadFilter();
+    const hingeGain=ctx.createGain(),grainGain=ctx.createGain();
+    const buffer=ctx.createBuffer(1,ctx.sampleRate,ctx.sampleRate),data=buffer.getChannelData(0);
+    for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
+    hinge.type="sawtooth";hinge.frequency.value=240;
+    resonance.type="bandpass";resonance.frequency.value=1100;resonance.Q.value=3.2;
+    grain.buffer=buffer;grain.loop=true;friction.type="bandpass";friction.frequency.value=1450;friction.Q.value=2.8;
+    hingeGain.gain.setValueAtTime(0,now);grainGain.gain.setValueAtTime(0,now);
+    hinge.connect(resonance).connect(hingeGain).connect(this.output);
+    grain.connect(friction).connect(grainGain).connect(this.output);
+    this.track(hinge,[resonance,hingeGain]);this.track(grain,[friction,grainGain]);
+    hinge.start(now);grain.start(now);
+    let stopped=false,scrapePhase=.08,lastUpdate=now;
+    return {
+      update: (progress,speed) => {
+        if(stopped||ctx.state!=="running")return;
+        const time=ctx.currentTime,p=Math.max(0,Math.min(1,progress));
+        const moving=speed>.008,motion=moving?.3+.7*Math.sqrt(Math.min(1,speed/1.4)):0;
+        // Friction catches, releases, and catches again; faster pulls repeat sooner.
+        if(moving)scrapePhase+=Math.min(.1,time-lastUpdate)*(2.6+Math.min(1,speed)*2.2);
+        lastUpdate=time;
+        const cycle=scrapePhase*Math.PI*2;
+        const squeak=Math.pow(Math.max(0,Math.sin(cycle)),.65);
+        const pitch=230-p*70+Math.sin(cycle-.5)*55+Math.sin(p*51)*12;
+        hinge.frequency.setTargetAtTime(pitch,time,.012);
+        resonance.frequency.setTargetAtTime(950+p*500+Math.sin(cycle)*180,time,.018);
+        friction.frequency.setTargetAtTime(1250+p*650,time,.025);
+        hingeGain.gain.setTargetAtTime(.085*motion*squeak,time,.008);
+        grainGain.gain.setTargetAtTime(.16*motion*squeak,time,.01);
+      },
+      stop: () => {
+        if(stopped)return;stopped=true;
+        if(ctx.state==="closed")return;
+        const time=ctx.currentTime;
+        hingeGain.gain.setTargetAtTime(0,time,.02);grainGain.gain.setTargetAtTime(0,time,.02);
+        try{hinge.stop(time+.1);grain.stop(time+.1);}catch{ /* Already disposed. */ }
+      },
+    };
+  }
 
   /** Low pump hum and filtered water noise, stopped when the lever is released. */
   async brew(): Promise<() => void> {

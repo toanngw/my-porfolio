@@ -11,7 +11,9 @@ npm run dev
 
 Open http://localhost:3000. The six sections use `#home`, `#about`, `#experience`, `#projects`, `#skills`, and `#contact`; old `#work` links resolve to Projects.
 
-The entry screen is an interactive 3D IVL (Iced Vanilla Coffee) station in the same scene as the workstation. Hold the lever (or focus it and hold Space or Enter) for about two seconds to fill the glass. Releasing early drains the progress. Once ready, the character collects that same glass, raises it for a hello, and carries it back to the desk while the camera follows. He sets the IVL down before the portfolio appears. The first press unlocks audio. Reduced motion opens the content directly after brewing; unavailable WebGL uses the illustrated machine and also opens the content directly. The keyboard skip-to-content link becomes available after entry. The welcome runs once per page load.
+The active entry is a walnut studio door. Drag its brass handle left to open it, or focus the handle and press Enter or Space. A short pull returns the door to its frame; a full pull swings it open and transitions through the doorway. The character greets the visitor from his desk, then reveals the portfolio. The handle gesture unlocks greeting audio. Reduced motion uses a fade and opens the content directly; unavailable WebGL also opens the content after the door interaction. The welcome runs once per page load.
+
+The complete IVL (Iced Vanilla Coffee) brewing and pickup entry is preserved. Change `studioExperience.entry` from `"door"` to `"coffee"` in `src/lib/entry-experience.ts` to restore it. Its UI, machine, sound, glass handoff, camera follow, and timeline checks remain in place. No entry selector is shown to visitors.
 
 ## Verification
 
@@ -26,6 +28,7 @@ npm run build
 
 ## Architecture
 
+- `src/lib/entry-experience.ts` and `door-entry.tsx`: select the active entry and handle the studio door drag, keyboard alternative, light, and transition.
 - `src/app/page.tsx`: server entry; `layout.tsx` provides metadata, the original monogram favicon, and locally hosted DM Sans.
 - `src/components/studio/studio.tsx`: persistent shell, section selection, and intro accessibility.
 - `character-story.ts`, `developer-character.tsx`, `hello-bubble.tsx`: articulated voxel rig, IVL pickup and cup-raise greeting, camera follow to the desk, and varied work/break cycle with a fading frustration bubble and contact-limited desk bonk. No external character model is required.

@@ -49,3 +49,20 @@ while(!pickup.released){
 assert.equal(greetings,1,'Greet once after collecting the IVL');
 assert(pickup.coffee.atDesk,'Set the coffee down before releasing the portfolio');
 console.log('Character timeline passed: continuous pickup and walking, held IVL during return, set-down before reveal, one greeting, idle cycle, reduced motion, and interruption recovery.');
+
+const door=createStory('door');
+assert.equal(door.entry,'door');assert.equal(door.started,false);assert.equal(door.reveal,0);
+assert.equal(door.coffee.atDesk,true,'Door entry keeps coffee on the desk');
+let doorReveal=0,doorGreeting=false;
+for(let i=0;i<60*4;i++){
+ advanceStory(door,1/60,false);
+ assert(!door.phase.startsWith('coffee-'),'Door entry must not run the preserved coffee pickup');
+ assert(door.reveal>=doorReveal,'The door welcome must reveal content without rewinding');doorReveal=door.reveal;
+ if(door.pose.bubble>.15)doorGreeting=true;
+ assert.equal(door.pose.coffeeGrip,0,'Door entry must not grab a glass');
+}
+assert(doorGreeting,'Welcome visitors after entering');assert(door.released);assert.equal(door.reveal,1);
+assert.equal(door.phase,'work');
+const doorSkip=createStory('door');skipStory(doorSkip);advanceStory(doorSkip,.016,true);
+assert.equal(doorSkip.phase,'work');assert.equal(doorSkip.reveal,1);
+console.log('Door timeline passed: seated greeting, independent coffee mode, monotonic reveal, and skip recovery.');

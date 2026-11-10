@@ -50,6 +50,17 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
   orbit.enabled=s.released;
   const frame=coffeeAnchor.current?.getBoundingClientRect();
   if(frame)Object.assign(coffeeFrame.current,{width:frame.width,height:frame.height,cx:frame.left+frame.width/2,cy:frame.top+frame.height/2});
+  if(s.entry==='door'&&!s.started){
+   const door=coffeeAnchor.current,progress=s.door.progress;
+   const roomFit=Math.min((door?.clientWidth??280)/3.5,(door?.clientHeight??450)/3.3);
+   orbit.target.copy(TARGET);camera.position.copy(CAMERA);camera.up.set(0,1,0);camera.lookAt(TARGET);
+   camera.zoom=MathUtils.lerp(roomFit,layoutFit,progress);previousFit.current=layoutFit;fit.current=layoutFit;
+   const centerX=frame?frame.left+frame.width/2:size.width/2,centerY=frame?frame.top+frame.height/2:size.height/2;
+   const shiftX=(size.width/2-MathUtils.lerp(centerX,size.width/2,progress))/camera.zoom,shiftY=(MathUtils.lerp(centerY,size.height/2,progress)-size.height/2)/camera.zoom;
+   const projection=camera as OrthographicCamera;projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
+   gl.domElement.dataset.doorProgress=progress.toFixed(3);
+   return;
+  }
   if(s.phase.startsWith('coffee-')&&!s.skipped){
    const smooth=(n:number)=>{const t=MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
    const travel=s.phase==='coffee-return-front'?smooth(s.time/2)*.55:s.phase==='coffee-return-side'?.55+smooth(s.time/1.65)*.45:['coffee-place','coffee-sit'].includes(s.phase)?1:0;
@@ -132,7 +143,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     <directionalLight position={[4,3,4]} intensity={1.1} color="#a8c7e8" />
     <group ref={artworkRef} name="workspace-artwork">
     <group ref={desk}><CodingDesk {...ambient}/></group>
-    <CoffeeStation story={props.story}/>
+    {props.story.current.entry==='coffee'&&<CoffeeStation story={props.story}/>}
     <DeveloperCharacter {...ambient} running={props.running} story={props.story} reduced={props.reduced} onRelease={props.onRelease}/>
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={Infinity} color="#08080b" />

@@ -14,6 +14,8 @@ import { ViewportAtmosphere } from "./viewport-atmosphere";
 import { SoundControls } from "./sound-controls";
 import { ScrollNavigation } from "./scroll-navigation";
 import { CoffeeEntry } from "./coffee-entry";
+import { DoorEntry } from "./door-entry";
+import { studioExperience } from "@/lib/entry-experience";
 function subscribeNavigation(callback: () => void) {
   window.addEventListener("hashchange", callback);
   window.addEventListener("popstate", callback);
@@ -24,7 +26,8 @@ const getView = () => viewFromHash(window.location.hash);
 export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
   const reduced = useReducedMotionPreference();
-  const story=useRef(createStory()),focusAfterSkip=useRef(false),sceneUnavailable=useRef(false);
+  const entry=studioExperience.entry;
+  const story=useRef(createStory(entry)),focusAfterSkip=useRef(false),sceneUnavailable=useRef(false);
   const [introStarted,setIntroStarted]=useState(false);
   const [introComplete,setIntroComplete]=useState(false);
   const [sceneReady,setSceneReady]=useState(false);
@@ -53,15 +56,16 @@ export function Studio() {
     window.history[fromScroll?"replaceState":"pushState"](null,"",`#${target}`);
     window.dispatchEvent(new Event("popstate-scroll"));
   }, []);
-  return <div ref={shell} className="studio-app" data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
+  return <div ref={shell} className="studio-app" data-entry={entry} data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
     studioAudio.prepare();
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const anchor = (event.target as Element).closest("a");
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
     {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
-    {!introComplete&&<div className="coffee-backdrop" aria-hidden="true"/>}
-    {!introStarted&&!introComplete&&<CoffeeEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor} sceneReady={sceneReady}/>}
+    {!introComplete&&entry==='coffee'&&<div className="coffee-backdrop" aria-hidden="true"/>}
+    {!introStarted&&!introComplete&&entry==='door'&&<DoorEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor}/>}
+    {!introStarted&&!introComplete&&entry==='coffee'&&<CoffeeEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor} sceneReady={sceneReady}/>}
     {(introStarted||introComplete)&&<a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>}
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell" inert={!introStarted&&!introComplete}>

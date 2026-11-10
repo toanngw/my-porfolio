@@ -173,7 +173,7 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
   if(state.released&&!released.current){released.current=true;onRelease();}
   if(state.phase==='bonk'&&state.time>=.55&&lastImpact.current!==state.cycle){lastImpact.current=state.cycle;playDeskThump();}
   // Keep a blocked welcome pending beyond the wave; reduced motion still gets a hello.
-  if(active&&running&&!helloAttempt.current.requested&&(((state.phase==='wave'||state.phase==='coffee-toast')&&p.bubble>.15)||state.skipped)){
+  if(active&&running&&!helloAttempt.current.requested&&(((state.phase==='wave'||state.phase==='coffee-toast'||state.phase==='door-welcome')&&p.bubble>.15)||state.skipped)){
    helloAttempt.current.requested=true;
    if(state.skipped)reaction.current=t;
    greetVisitor();
@@ -181,7 +181,7 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
   const c=state.time%24;lift.current=state.phase==='settle'&&!reduced?MathUtils.smoothstep(c,.15,.85)*(1-MathUtils.smoothstep(c,1.35,2.3)):state.phase==='work'?MathUtils.smoothstep(c,13.4,15.3)*(1-MathUtils.smoothstep(c,18,20)):0;
   const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025;
   if(greet>0){p.bubble=Math.max(p.bubble,Math.sin(greet*Math.PI));if(state.phase==='work'&&!reduced)p.wave=Math.max(p.wave,Math.sin(greet*Math.PI));}
-  if(root.current){root.current.visible=running;root.current.position.set(p.x,0,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
+  if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,0,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
   if(chair.current){chair.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
   if(pelvis.current)pelvis.current.position.set(0,height,p.bonk*SCOOT);
   if(head.current){
