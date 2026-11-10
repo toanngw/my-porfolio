@@ -1,7 +1,7 @@
 "use client";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { studioAudio } from "@/lib/studio-audio";
-import { createStory, restartStory, skipStory } from "./character-story";
+import { createStory, skipStory } from "./character-story";
 import { CinematicStage } from "./cinematic-stage";
 import { Mark } from "@/components/icons";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,31 +23,19 @@ const getView = () => viewFromHash(window.location.hash);
 export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
   const reduced = useReducedMotionPreference();
-  const story=useRef(createStory()),focusAfterSkip=useRef(false),sceneUnavailable=useRef(false);
+  const story=useRef(createStory()),focusAfterSkip=useRef(false);
+  const [introStarted,setIntroStarted]=useState(false);
   const [introComplete,setIntroComplete]=useState(false);
   const [navigationMotion,setNavigationMotion]=useState(false);
   const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null);
-  const restart=useCallback(()=>{
-    restartStory(story.current);
-    if(sceneUnavailable.current)skipStory(story.current);
-    shell.current?.style.setProperty('--story-reveal',sceneUnavailable.current?'1':'0');
-    setIntroComplete(sceneUnavailable.current);
+  const start=useCallback(async()=>{
+    // Resume inside the visitor's gesture before advancing the welcome timeline.
+    await studioAudio.prepare();
+    setIntroStarted(true);
   },[]);
-  const previousView=useRef(view);
-  useEffect(()=>{
-    if(view==='home'&&previousView.current!=='home')restart();
-    previousView.current=view;
-  },[view,restart]);
-  useEffect(()=>{
-    const revisit=(event:PageTransitionEvent)=>{
-      if(event.persisted&&viewFromHash(window.location.hash)==='home')restart();
-    };
-    window.addEventListener('pageshow',revisit);
-    return()=>window.removeEventListener('pageshow',revisit);
-  },[restart]);
   const finish=useCallback(()=>setIntroComplete(true),[]);
-  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link");skipStory(story.current);setIntroComplete(true);},[]);
-  const unavailable=useCallback(()=>{sceneUnavailable.current=true;skip();},[skip]);
+  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link, .intro-skip");skipStory(story.current);setIntroComplete(true);},[]);
+  const unavailable=useCallback(()=>{skip();},[skip]);
   const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
   const clock = useRef(0);
   const content = useRef<HTMLDivElement>(null);
@@ -57,14 +45,11 @@ export function Studio() {
     }
   },[introComplete]);
   const goTo = useCallback((target: View, fromScroll = false) => {
-    if(viewFromHash(window.location.hash)===target){
-      if(target==='home')restart();
-      return;
-    }
+    if(viewFromHash(window.location.hash)===target)return;
     setNavigationMotion(true);
     window.history[fromScroll?"replaceState":"pushState"](null,"",`#${target}`);
     window.dispatchEvent(new Event("popstate-scroll"));
-  }, [restart]);
+  }, []);
   return <div ref={shell} className="studio-app" data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
     studioAudio.prepare();
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
@@ -72,6 +57,12 @@ export function Studio() {
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
     {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
+    {!introStarted&&!introComplete&&<div className="intro-welcome" role="group" aria-label="Welcome">
+      <p>A little hello before you explore.</p>
+      <button type="button" className="intro-enter" onClick={()=>void start()}>Enter portfolio</button>
+      <span>Includes sound</span>
+      <button type="button" className="intro-skip" onClick={skip}>Skip intro</button>
+    </div>}
     <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell">
@@ -80,7 +71,7 @@ export function Studio() {
         <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} running={introStarted||introComplete} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
           {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}

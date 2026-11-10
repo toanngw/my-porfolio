@@ -16,7 +16,7 @@ export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
  if(!s.started)s.started=true;
  s.elapsed+=dt;s.time+=dt;
  let length=s.phase==='work'?22+((s.cycle*7+3)%13):duration[s.phase];
- // The welcome plays on every visit; reduced motion suppresses the idle cycle.
+ // The welcome plays once per page load; reduced motion suppresses the idle cycle.
  if(reduced&&s.released&&s.phase!=='work')skipStory(s);
  if(s.time>=length){
   s.time-=length;

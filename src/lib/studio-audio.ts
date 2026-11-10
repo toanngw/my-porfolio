@@ -33,7 +33,7 @@ class StudioAudio {
     source.onended = () => { this.voices.delete(source); source.disconnect(); nodes.forEach(node => node.disconnect()); };
   }
 
-  prepare() { void this.unlock().catch(() => {}); }
+  prepare() { return this.unlock().catch(() => false); }
 
   /** A tiny two-syllable voxel voice, synthesized locally rather than downloaded. */
   private lastHello = -Infinity;
