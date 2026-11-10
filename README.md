@@ -11,7 +11,7 @@ npm run dev
 
 Open http://localhost:3000. The six sections use `#home`, `#about`, `#experience`, `#projects`, `#skills`, and `#contact`; old `#work` links resolve to Projects.
 
-Select **Enter portfolio** to enable sound before the character starts his welcome. The greeting and mechanical lift sounds then follow the animation without opening the headphone controls. **Skip intro** opens the content directly. The welcome runs once per page load; scrolling back home, selecting Home, and restoring the page from the browser's back/forward cache keep the profile revealed.
+The character's welcome starts as soon as the page loads. Browsers block audio until the visitor interacts with the page, so the greeting and mechanical lift sounds play once the visitor clicks, taps, or presses a key. The welcome runs once per page load; scrolling back home, selecting Home, and restoring the page from the browser's back/forward cache keep the profile revealed.
 
 ## Verification
 

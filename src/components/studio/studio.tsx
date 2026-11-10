@@ -24,17 +24,11 @@ export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
   const reduced = useReducedMotionPreference();
   const story=useRef(createStory()),focusAfterSkip=useRef(false);
-  const [introStarted,setIntroStarted]=useState(false);
   const [introComplete,setIntroComplete]=useState(false);
   const [navigationMotion,setNavigationMotion]=useState(false);
   const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null);
-  const start=useCallback(async()=>{
-    // Resume inside the visitor's gesture before advancing the welcome timeline.
-    await studioAudio.prepare();
-    setIntroStarted(true);
-  },[]);
   const finish=useCallback(()=>setIntroComplete(true),[]);
-  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link, .intro-skip");skipStory(story.current);setIntroComplete(true);},[]);
+  const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link");skipStory(story.current);setIntroComplete(true);},[]);
   const unavailable=useCallback(()=>{skip();},[skip]);
   const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
   const clock = useRef(0);
@@ -57,12 +51,6 @@ export function Studio() {
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
     {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
-    {!introStarted&&!introComplete&&<div className="intro-welcome" role="group" aria-label="Welcome">
-      <p>A little hello before you explore.</p>
-      <button type="button" className="intro-enter" onClick={()=>void start()}>Enter portfolio</button>
-      <span>Includes sound</span>
-      <button type="button" className="intro-skip" onClick={skip}>Skip intro</button>
-    </div>}
     <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell">
@@ -71,7 +59,7 @@ export function Studio() {
         <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} running={introStarted||introComplete} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
           {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}
