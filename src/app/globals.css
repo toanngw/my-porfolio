@@ -16,6 +16,44 @@ button, a, [tabindex] { outline-offset: 5px; }
 .skip-link { position: fixed; z-index: 30; left: 16px; top: 12px; padding: 8px 15px; background: var(--foreground); color: var(--background); clip-path: inset(50%); width: 1px; height: 1px; white-space: nowrap; }
 .skip-link:focus { clip-path: none; width: auto; height: auto; }
 .studio-app { position: relative; isolation: isolate; height: 100dvh; min-height: 0; }
+.coffee-backdrop { position: fixed; inset: 0; z-index: 0; pointer-events: none; background: radial-gradient(ellipse at 50% 42%, #34352c 0%, #1d2522 34%, #101716 74%); opacity: calc(1 - var(--coffee-world, 0)); }
+.coffee-entry { --brew: 0; position: fixed; inset: 0; z-index: 32; display: grid; place-items: center; padding: 30px 20px; overflow: auto; color: #efe6d4; background: transparent; color-scheme: dark; transition: opacity 550ms ease; }
+.coffee-entry::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .055; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23fff' filter='url(%23n)' opacity='.6' d='M0 0h160v160H0z'/%3E%3C/svg%3E"); }
+.coffee-entry-scene { position: relative; width: min(560px, 100%); text-align: center; transition: transform 700ms cubic-bezier(.3,0,.2,1), opacity 550ms ease; }
+.coffee-eyebrow { display: flex; justify-content: center; align-items: center; gap: 10px; color: #a2ab9b; font-size: 9px; font-weight: 600; letter-spacing: .22em; }
+.coffee-eyebrow > span { width: 5px; height: 5px; border-radius: 50%; background: #dfac68; box-shadow: 0 0 12px #d79f5b70; }
+.coffee-machine { position: relative; width: 100%; margin: -8px auto -14px; }
+.coffee-illustration { display: block; width: 100%; height: auto; overflow: visible; }
+.coffee-lever { position: absolute; top: 12%; left: 74%; width: 17%; height: 33%; margin: 0; padding: 0; border: 0; background: transparent; border-radius: 22px; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; transform-origin: 24% 83%; transition: transform 220ms cubic-bezier(.2,.8,.3,1), filter 200ms ease; }
+.coffee-entry[data-3d="true"] .coffee-illustration, .coffee-entry[data-3d="true"] .coffee-lever svg { opacity: 0; }
+.coffee-entry[data-3d="true"] .coffee-lever { inset: 0; width: 100%; height: 100%; transform: none; }
+.coffee-lever svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.coffee-lever:hover { filter: brightness(1.2) drop-shadow(0 0 8px #ddb47725); }
+.coffee-lever:focus-visible { outline: 2px solid #e2b576; outline-offset: 6px; border-radius: 16px; }
+.coffee-entry[data-brewing="true"] .coffee-lever { transform: rotate(32deg); cursor: grabbing; }
+.coffee-caption h1 { margin: 0; font-size: clamp(28px, 5vw, 38px); font-weight: 500; letter-spacing: -.045em; line-height: 1.3; }
+.coffee-caption p { margin: 12px 0 0; color: #a5ad9e; font-size: 12px; line-height: 1.8; }
+.coffee-progress { width: 112px; height: 2px; margin: 23px auto 0; overflow: hidden; background: #465043; }
+.coffee-progress > span { display: block; width: 100%; height: 100%; background: #e2b576; transform: scaleX(var(--brew)); transform-origin: left; }
+.coffee-liquid { transform: translateY(calc((1 - var(--brew)) * 66px)); }
+.coffee-stream { opacity: 0; transition: opacity 150ms ease; }
+.coffee-entry[data-brewing="true"] .coffee-stream { opacity: 1; animation: coffee-flow 180ms linear infinite alternate; }
+.coffee-gauge { transform-origin: 327px 155px; transform: rotate(calc(var(--brew) * 60deg)); transition: transform 80ms linear; }
+.coffee-steam { opacity: 0; transform: translateY(8px); transition: opacity 500ms ease; }
+.coffee-entry[data-brewing="true"] .coffee-steam, .coffee-entry[data-ready="true"] .coffee-steam { opacity: calc(var(--brew) * .8); animation: coffee-steam 1800ms ease-in-out infinite; }
+.coffee-entry[data-brewing="true"] .coffee-indicator { filter: drop-shadow(0 0 4px #dfac68); }
+.coffee-entry[data-ready="true"] .coffee-indicator { fill: #a2be8e; }
+.coffee-entry[data-leaving="true"] { opacity: 0; pointer-events: none; }
+.coffee-entry[data-leaving="true"] .coffee-entry-scene { transform: scale(.85) translateY(14px); opacity: 0; }
+.coffee-corner { position: absolute; bottom: 26px; left: 30px; color: #748275; font-size: 8px; font-weight: 500; letter-spacing: .18em; }
+.coffee-corner > span { padding: 0 8px; color: #a88d65; }
+@keyframes coffee-flow { from { stroke-opacity: .7; } to { stroke-opacity: 1; } }
+@keyframes coffee-steam { 0%, 100% { transform: translateY(5px); } 50% { transform: translateY(-5px); } }
+@media (max-width: 600px) { .coffee-entry { padding: 24px 8px 64px; } .coffee-eyebrow { font-size: 8px; letter-spacing: .17em; } .coffee-machine { margin-top: 12px; margin-bottom: 8px; } .coffee-caption p { font-size: 11px; } .coffee-corner { left: 0; right: 0; bottom: 20px; text-align: center; font-size: 7px; } }
+@media (max-height: 600px) and (min-width: 601px) { .coffee-entry { padding: 20px; } .coffee-entry-scene { width: 370px; } .coffee-caption h1 { font-size: 26px; } .coffee-caption p { margin-top: 6px; } .coffee-progress { margin-top: 12px; } }
+@media (prefers-reduced-motion: reduce) { .coffee-entry, .coffee-entry-scene, .coffee-lever, .coffee-steam, .coffee-stream, .coffee-gauge { transition: none; } .coffee-entry[data-brewing="true"] .coffee-stream, .coffee-entry[data-brewing="true"] .coffee-steam, .coffee-entry[data-ready="true"] .coffee-steam { animation: none; } }
+.studio-app:has(.intro-welcome) .scene-frame { pointer-events: none; }
+.studio-app .skip-link:focus { z-index: 33; }
 .app-shell { position: relative; z-index: 1; width: 100%; max-width: 1660px; height: 100dvh; margin: 0 auto; padding: 24px 40px 26px; display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 24px; }
 .app-header { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px; min-width: 0; }
 .wordmark { display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; letter-spacing: -.025em; min-height: 44px; min-width: 0; }

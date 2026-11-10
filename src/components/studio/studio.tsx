@@ -13,6 +13,7 @@ import { PanelContinuation } from "./panel-continuation";
 import { ViewportAtmosphere } from "./viewport-atmosphere";
 import { SoundControls } from "./sound-controls";
 import { ScrollNavigation } from "./scroll-navigation";
+import { CoffeeEntry } from "./coffee-entry";
 function subscribeNavigation(callback: () => void) {
   window.addEventListener("hashchange", callback);
   window.addEventListener("popstate", callback);
@@ -23,13 +24,21 @@ const getView = () => viewFromHash(window.location.hash);
 export function Studio() {
   const view = useSyncExternalStore(subscribeNavigation, getView, () => "home" as const);
   const reduced = useReducedMotionPreference();
-  const story=useRef(createStory()),focusAfterSkip=useRef(false);
+  const story=useRef(createStory()),focusAfterSkip=useRef(false),sceneUnavailable=useRef(false);
+  const [introStarted,setIntroStarted]=useState(false);
   const [introComplete,setIntroComplete]=useState(false);
+  const [sceneReady,setSceneReady]=useState(false);
   const [navigationMotion,setNavigationMotion]=useState(false);
-  const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null);
+  const shell=useRef<HTMLDivElement>(null),spacer=useRef<HTMLDivElement>(null),sceneAnchor=useRef<HTMLDivElement>(null),coffeeAnchor=useRef<HTMLDivElement>(null);
+  const start=useCallback(async()=>{
+    // Resume audio inside the visitor's gesture before advancing the welcome.
+    await studioAudio.prepare();
+    setIntroStarted(true);
+    if(sceneUnavailable.current||reduced){skipStory(story.current);setIntroComplete(true);}
+  },[reduced]);
   const finish=useCallback(()=>setIntroComplete(true),[]);
   const skip=useCallback(()=>{focusAfterSkip.current=!!document.activeElement?.matches(".skip-link");skipStory(story.current);setIntroComplete(true);},[]);
-  const unavailable=useCallback(()=>{skip();},[skip]);
+  const unavailable=useCallback(()=>{sceneUnavailable.current=true;if(introStarted)skip();},[introStarted,skip]);
   const reveal=useCallback((progress:number)=>{shell.current?.style.setProperty("--story-reveal",String(progress));},[]);
   const clock = useRef(0);
   const content = useRef<HTMLDivElement>(null);
@@ -51,15 +60,17 @@ export function Studio() {
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
   }}>
     {introComplete&&<ScrollNavigation view={view} panel={content} onNavigate={goTo} instant={reduced}/>}
-    <a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>
+    {!introComplete&&<div className="coffee-backdrop" aria-hidden="true"/>}
+    {!introStarted&&!introComplete&&<CoffeeEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor} sceneReady={sceneReady}/>}
+    {(introStarted||introComplete)&&<a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>}
     <ViewportAtmosphere clock={clock} />
-    <div className="app-shell">
+    <div className="app-shell" inert={!introStarted&&!introComplete}>
       <header className="app-header" inert={!introComplete}>
         <a href="#home" className="wordmark" aria-label="Cao-Toan Nguyen, Home"><Mark /><span>Cao-Toan Nguyen<span className="warm-dot">.</span></span></a>
         <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} clock={clock} story={story} onRelease={finish} onUnavailable={unavailable}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} coffeeAnchor={coffeeAnchor} clock={clock} story={story} running={introStarted||introComplete} onRelease={finish} onUnavailable={unavailable} onSceneReady={()=>setSceneReady(true)}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
           {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}

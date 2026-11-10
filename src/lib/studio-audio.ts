@@ -35,6 +35,36 @@ class StudioAudio {
 
   prepare() { return this.unlock().catch(() => false); }
 
+  /** Low pump hum and filtered water noise, stopped when the lever is released. */
+  async brew(): Promise<() => void> {
+    if (!(await this.prepare()) || !this.context || !this.output) return () => {};
+    const ctx = this.context, now = ctx.currentTime;
+    const pump = ctx.createOscillator(), water = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter(), hum = ctx.createGain(), hiss = ctx.createGain();
+    const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    pump.type = "triangle"; pump.frequency.value = 74;
+    hum.gain.setValueAtTime(0, now); hum.gain.linearRampToValueAtTime(.055, now + .15);
+    water.buffer = buffer; water.loop = true;
+    filter.type = "lowpass"; filter.frequency.value = 680;
+    hiss.gain.setValueAtTime(0, now); hiss.gain.linearRampToValueAtTime(.11, now + .2);
+    pump.connect(hum).connect(this.output); water.connect(filter).connect(hiss).connect(this.output);
+    this.track(pump, [hum]); this.track(water, [filter, hiss]);
+    pump.start(); water.start();
+    // A safety stop also bounds playback if a page is interrupted mid-gesture.
+    pump.stop(now + 3); water.stop(now + 3);
+    let stopped = false;
+    return () => {
+      if (stopped || ctx.state === "closed") return;
+      stopped = true;
+      const end = ctx.currentTime;
+      hum.gain.cancelScheduledValues(end); hiss.gain.cancelScheduledValues(end);
+      hum.gain.setTargetAtTime(0, end, .025); hiss.gain.setTargetAtTime(0, end, .025);
+      try { pump.stop(end + .12); water.stop(end + .12); } catch { /* Already stopped. */ }
+    };
+  }
+
   /** A tiny two-syllable voxel voice, synthesized locally rather than downloaded. */
   private lastHello = -Infinity;
   async hello() {

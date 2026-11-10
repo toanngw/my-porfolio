@@ -5,13 +5,13 @@ import { useClientReady, useDarkTheme, usePageVisible, useReducedMotionPreferenc
 import type { CharacterStory } from "./character-story";
 import type { SceneCommands } from "./workspace-scene";
 const Scene=dynamic(()=>import("./workspace-scene"),{ssr:false});
-export function WorkspaceStage({ clock, story,anchor,onRelease,onUnavailable: unavailable }: { clock: RefObject<number>;anchor:RefObject<HTMLDivElement|null>;story:RefObject<CharacterStory>;onRelease:()=>void;onUnavailable:()=>void }) {
+export function WorkspaceStage({ clock, story,anchor,coffeeAnchor,running,onRelease,onUnavailable: unavailable,onSceneReady }: { clock: RefObject<number>;anchor:RefObject<HTMLDivElement|null>;coffeeAnchor:RefObject<HTMLDivElement|null>;story:RefObject<CharacterStory>;running:boolean;onRelease:()=>void;onUnavailable:()=>void;onSceneReady:()=>void }) {
   const interaction=useRef<HTMLDivElement>(null);
   const controls=useRef<SceneCommands|null>(null);
   const [ready,setReady]=useState(false);
   const [failed,setFailed]=useState(false);
   const visible=usePageVisible(),dark=useDarkTheme();
-  const onReady=useCallback(()=>setReady(true),[]);
+  const onReady=useCallback(()=>{setReady(true);onSceneReady();},[onSceneReady]);
   const onUnavailable=useCallback(()=>{setReady(false);setFailed(true);unavailable();},[unavailable]);
   const clientReady=useClientReady();
   const active=clientReady&&visible;
@@ -24,5 +24,5 @@ export function WorkspaceStage({ clock, story,anchor,onRelease,onUnavailable: un
 
     </div>
     <p className="sr-only" id="scene-instructions">Drag or swipe to rotate freely. Scroll or pinch to zoom. Keyboard: arrow keys rotate, plus and minus zoom, Escape resets.</p>
-  </div><div className="webgl-viewport" data-ready={ready} aria-hidden="true">{clientReady && <Scene anchor={anchor} interaction={interaction} story={story} onRelease={onRelease} clock={clock} active={active} reduced={reduced} dark={dark} controls={controls} onReady={onReady} onUnavailable={onUnavailable} />}</div></>;
+  </div><div className="webgl-viewport" data-ready={ready} aria-hidden="true">{clientReady && <Scene anchor={anchor} coffeeAnchor={coffeeAnchor} running={running} interaction={interaction} story={story} onRelease={onRelease} clock={clock} active={active} reduced={reduced} dark={dark} controls={controls} onReady={onReady} onUnavailable={onUnavailable} />}</div></>;
 }

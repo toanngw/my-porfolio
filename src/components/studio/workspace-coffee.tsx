@@ -1,37 +1,23 @@
 import { useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group, Mesh, MeshBasicMaterial, Vector3, Quaternion } from "three";
-import { Box } from "./scene-primitives";
+import { Group, Mesh } from "three";
 import type { Breeze } from "./breeze";
+import type { CharacterStory } from "./character-story";
 
-function Steam({ clock, active, breeze }: { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze> }) {
-  const wisps = useRef<Group>(null);
-  const localWind=useRef(new Vector3()),orientation=useRef(new Quaternion());
+/** One persistent glass of IVL, from the machine to the actor's hand to the desk. */
+export function Coffee({ story }: { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze>; story: RefObject<CharacterStory> }) {
+  const liquid = useRef<Mesh>(null), ice = useRef<Group>(null);
   useFrame(() => {
-    if (!active || !wisps.current) return;
-    if (wisps.current.parent) wisps.current.quaternion.copy(wisps.current.parent.quaternion).invert();
-    wisps.current.getWorldQuaternion(orientation.current).invert();
-    localWind.current.set(breeze.current.x,0,breeze.current.z).applyQuaternion(orientation.current);
-    wisps.current.children.forEach((child, index) => {
-      const puff = child as Mesh;
-      const phase = (clock.current * 0.38 + index / 9) % 1;
-      const wind = localWind.current.x * phase * 0.13;
-      puff.position.set(Math.sin(phase * 8 + index * 0.6) * phase * 0.055 + wind, 0.01 + phase * 0.5, Math.cos(phase * 7 + index) * phase * 0.035 + localWind.current.z * phase * 0.13);
-      puff.scale.set(0.018 + phase * 0.047, 0.04 + phase * 0.065, 0.018 + phase * 0.047);
-      (puff.material as MeshBasicMaterial).opacity = Math.sin(phase * Math.PI) * 0.26;
-    });
+    const p = story.current.coffee.progress;
+    if (liquid.current) { liquid.current.scale.y = Math.max(.001, p); liquid.current.position.y = -.115 + p * .095; }
+    if (ice.current) ice.current.visible = p > .6;
   });
-  return <group ref={wisps} position={[0, 0.11, 0]}>{Array.from({ length: 9 }, (_, i) => <mesh key={i} position={[0, 0.12 + i * 0.045, 0]} scale={0.025}>
-    <sphereGeometry args={[1, 8, 6]} /><meshBasicMaterial color="#f6f4ef" transparent opacity={0.13} depthWrite={false} />
-  </mesh>)}</group>;
-}
-export function Coffee({ clock, active, breeze }: { clock: RefObject<number>; active: boolean; breeze: RefObject<Breeze> }) {
-  return <>
-    <Box position={[0, 0, 0]} size={[0.19, 0.19, 0.18]} color="#cf7953" radius={0.035} />
-    <Box position={[0, 0.025, -0.094]} size={[0.065, 0.035, 0.008]} color="#f2dfb4" radius={0.004} />
-    <mesh position={[0, 0.097, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow><circleGeometry args={[0.073, 20]} /><meshStandardMaterial color="#392219" roughness={0.27} /></mesh>
-    <mesh position={[0, 0.098, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow><torusGeometry args={[0.08, 0.011, 6, 20]} /><meshStandardMaterial color="#e4a377" roughness={0.45} /></mesh>
-    <mesh position={[0.115, 0, 0]} castShadow><torusGeometry args={[0.055, 0.019, 6, 12]} /><meshStandardMaterial color="#cf7953" roughness={0.5} /></mesh>
-    <Steam clock={clock} active={active} breeze={breeze} />
-  </>;
+  return <group name="ivl-glass">
+    <mesh castShadow><cylinderGeometry args={[.12,.09,.26,12,1,true]}/><meshStandardMaterial color="#d9e6d4" transparent opacity={.24} roughness={.17} metalness={.1} depthWrite={false} side={2}/></mesh>
+    <mesh ref={liquid}><cylinderGeometry args={[.109,.085,.19,12]}/><meshStandardMaterial color="#b5814d" roughness={.42}/></mesh>
+    <mesh position={[0,.13,0]} rotation={[Math.PI/2,0,0]}><torusGeometry args={[.12,.008,6,16]}/><meshStandardMaterial color="#e1e8d8" transparent opacity={.7} roughness={.2}/></mesh>
+    <mesh position={[0,-.13,0]}><cylinderGeometry args={[.092,.092,.012,12]}/><meshStandardMaterial color="#c7d3bf" transparent opacity={.65}/></mesh>
+    <group ref={ice}>{[[-.04,.077,-.025],[.035,.083,.025],[.025,.095,-.035]].map((p,i)=><mesh key={i} position={p as [number,number,number]} rotation={[.2,i*.7,.3]}><boxGeometry args={[.068,.05,.065]}/><meshStandardMaterial color="#e9e8cd" transparent opacity={.8} roughness={.18}/></mesh>)}</group>
+    <mesh position={[-.06,0,-.092]} rotation={[.08,0,.08]}><boxGeometry args={[.014,.19,.004]}/><meshBasicMaterial color="#f1f2df" transparent opacity={.45}/></mesh>
+  </group>;
 }

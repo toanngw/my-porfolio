@@ -7,21 +7,23 @@ import type { TrackballControls as TrackballControlsImpl } from "three-stdlib";
 import type { CharacterStory } from "./character-story";
 import { DeveloperCharacter } from "./developer-character";
 import { CodingDesk } from "./winter-world";
+import { CoffeeStation } from "./coffee-station";
 import { Atmosphere, InfiniteGround } from "./atmosphere";
 import { sampleBreeze, type Breeze } from "./breeze";
 import { supportsWebGL } from "@/lib/webgl-support";
 
 export type SceneCommands = { key: (key: string) => void };
-type SceneProps = { anchor:RefObject<HTMLDivElement|null>;interaction:RefObject<HTMLDivElement|null>; story:RefObject<CharacterStory>;onRelease:()=>void; clock: RefObject<number>; active: boolean; reduced: boolean; dark: boolean; controls: RefObject<SceneCommands | null>; onReady: () => void; onUnavailable: () => void };
+type SceneProps = { anchor:RefObject<HTMLDivElement|null>;coffeeAnchor:RefObject<HTMLDivElement|null>;running:boolean;interaction:RefObject<HTMLDivElement|null>; story:RefObject<CharacterStory>;onRelease:()=>void; clock: RefObject<number>; active: boolean; reduced: boolean; dark: boolean; controls: RefObject<SceneCommands | null>; onReady: () => void; onUnavailable: () => void };
 const TARGET = new Vector3(-0.48, 1.18, 0.235);
 const CAMERA = new Vector3(5.2, 2.72, -6.3).add(TARGET);
 // Stable camera options prevent React updates (including scroll state) resetting zoom.
 const CAMERA_OPTIONS={position:CAMERA.toArray(),zoom:70,near:0.01,far:200,manual:true};
 const MIN_ZOOM=0.45,MAX_ZOOM=2.5;
 const WORLD_UP=new Vector3(0,1,0);
-function CameraControls({active,controls:commandsRef,story,anchor,interaction}:Pick<SceneProps,"active"|"controls"|"story"|"anchor"|"interaction">){
+function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,interaction,reduced}:Pick<SceneProps,"active"|"controls"|"story"|"anchor"|"coffeeAnchor"|"interaction"|"reduced">){
  const controls=useRef<TrackballControlsImpl>(null),idle=useRef({interacting:false,resumeAt:0}),fit=useRef(70),previousFit=useRef(0),sample=useRef(0);
  const {size,get,invalidate}=useThree();
+ const coffeeFrame=useRef({width:560,height:460,cx:0,cy:0});
  useEffect(()=>{
   const camera=get().camera,orbit=controls.current;if(!orbit)return;
   const immediate=(update:()=>void)=>{orbit.staticMoving=true;orbit.update();update();camera.updateProjectionMatrix();orbit.update();idle.current.resumeAt=performance.now()+3000;invalidate();};
@@ -44,6 +46,27 @@ function CameraControls({active,controls:commandsRef,story,anchor,interaction}:P
   const width=box?.width??size.width,height=box?.height??size.height;
   const cx=MathUtils.lerp(size.width/2,(box?.left??0)+width/2,p),cy=MathUtils.lerp(size.height/2,(box?.top??0)+height/2,p);
   const introFit=Math.min(size.width/3.7,size.height/4.5),slotFit=Math.min(width/3.6,height/2.95),layoutFit=MathUtils.lerp(introFit,slotFit,p);
+  const s=story.current;
+  orbit.enabled=s.released;
+  const frame=coffeeAnchor.current?.getBoundingClientRect();
+  if(frame)Object.assign(coffeeFrame.current,{width:frame.width,height:frame.height,cx:frame.left+frame.width/2,cy:frame.top+frame.height/2});
+  if(s.phase.startsWith('coffee-')&&!s.skipped){
+   const smooth=(n:number)=>{const t=MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
+   const travel=s.phase==='coffee-return-front'?smooth(s.time/2)*.55:s.phase==='coffee-return-side'?.55+smooth(s.time/1.65)*.45:['coffee-place','coffee-sit'].includes(s.phase)?1:0;
+   const shot=coffeeFrame.current;
+   const machineFit=Math.min(shot.width/4.5,shot.height/3.7);
+   const follow=reduced?(travel>0?1:0):travel;
+   orbit.target.set(MathUtils.lerp(1.6,TARGET.x,follow),MathUtils.lerp(1.65,TARGET.y,follow),MathUtils.lerp(-1.2,TARGET.z,follow));
+   camera.position.set(orbit.target.x+MathUtils.lerp(1.7,5.2,follow),orbit.target.y+MathUtils.lerp(1,2.72,follow),orbit.target.z+MathUtils.lerp(-6,-6.3,follow));
+   camera.up.set(0,1,0);camera.lookAt(orbit.target);
+   camera.zoom=MathUtils.lerp(machineFit,layoutFit,follow);previousFit.current=layoutFit;fit.current=layoutFit;
+   const centerX=MathUtils.lerp(shot.cx||size.width/2,cx,follow),centerY=MathUtils.lerp(shot.cy||size.height/2,cy,follow);
+   const projection=camera as OrthographicCamera,shiftX=(size.width/2-centerX)/camera.zoom,shiftY=(centerY-size.height/2)/camera.zoom;
+   projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
+   anchor.current?.closest<HTMLElement>('.studio-app')?.style.setProperty('--coffee-world',String(follow));
+   gl.domElement.dataset.coffeeCamera=follow<1?'following':'desk';
+   return;
+  }
   if(!previousFit.current)camera.zoom=layoutFit;
   else if(Math.abs(layoutFit-previousFit.current)>.001)camera.zoom*=layoutFit/previousFit.current;
   previousFit.current=layoutFit;fit.current=layoutFit;
@@ -92,6 +115,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
       if (readyFrames.current === 2) onReady(); else invalidate();
     }
     sampleBreeze(elapsed.current,breeze.current);
+    if(desk.current)desk.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(props.story.current.phase);
     if(desk.current){const impact=props.story.current.pose.impact;desk.current.position.y=impact*.004;desk.current.rotation.z=Math.sin(props.story.current.elapsed*65)*impact*.004;}
     gl.domElement.dataset.pivot=compositionRef.current?.position.toArray().join(",")??"";
     sample.current+=delta;
@@ -101,19 +125,20 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
   return <>
     <ambientLight intensity={dark ? 0.55 : 0.85} />
     <hemisphereLight args={["#c7dcf2","#9a7d65",1.2]} />
-    <InfiniteGround dark={dark} />
+    <InfiniteGround dark={dark||!props.story.current.released} />
     <group ref={compositionRef} name="workspace-turntable" position={[-0.48,0,0.2]}>
     <group ref={offsetRef} position={[0.48,0,-0.2]}>
     <directionalLight position={[-3,6,-4]} intensity={2.6} color="#fff0d7" castShadow shadow-intensity={0.32} shadow-radius={4} shadow-blurSamples={8} shadow-mapSize={[1024,1024]} shadow-camera-left={-3.5} shadow-camera-right={3.5} shadow-camera-top={4} shadow-camera-bottom={-3} shadow-normalBias={0.035} shadow-bias={-0.0003} />
     <directionalLight position={[4,3,4]} intensity={1.1} color="#a8c7e8" />
     <group ref={artworkRef} name="workspace-artwork">
     <group ref={desk}><CodingDesk {...ambient}/></group>
-    <DeveloperCharacter {...ambient} story={props.story} reduced={props.reduced} onRelease={props.onRelease}/>
+    <CoffeeStation story={props.story}/>
+    <DeveloperCharacter {...ambient} running={props.running} story={props.story} reduced={props.reduced} onRelease={props.onRelease}/>
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={Infinity} color="#08080b" />
     </group></group>
     <Atmosphere {...ambient} dark={dark} />
-    <CameraControls anchor={props.anchor} interaction={props.interaction} active={active} controls={props.controls} story={props.story} />
+    <CameraControls anchor={props.anchor} coffeeAnchor={props.coffeeAnchor} interaction={props.interaction} active={active} controls={props.controls} story={props.story} reduced={props.reduced} />
   </>;
 }
 class RenderBoundary extends Component<{children:ReactNode;onError:()=>void},{failed:boolean}> {

@@ -11,7 +11,7 @@ npm run dev
 
 Open http://localhost:3000. The six sections use `#home`, `#about`, `#experience`, `#projects`, `#skills`, and `#contact`; old `#work` links resolve to Projects.
 
-The character's welcome starts as soon as the page loads. Browsers block audio until the visitor interacts with the page, so the greeting and mechanical lift sounds play once the visitor clicks, taps, or presses a key. The welcome runs once per page load; scrolling back home, selecting Home, and restoring the page from the browser's back/forward cache keep the profile revealed.
+The entry screen is an interactive 3D IVL (Iced Vanilla Coffee) station in the same scene as the workstation. Hold the lever (or focus it and hold Space or Enter) for about two seconds to fill the glass. Releasing early drains the progress. Once ready, the character collects that same glass, raises it for a hello, and carries it back to the desk while the camera follows. He sets the IVL down before the portfolio appears. The first press unlocks audio. Reduced motion opens the content directly after brewing; unavailable WebGL uses the illustrated machine and also opens the content directly. The keyboard skip-to-content link becomes available after entry. The welcome runs once per page load.
 
 ## Verification
 
@@ -28,7 +28,8 @@ npm run build
 
 - `src/app/page.tsx`: server entry; `layout.tsx` provides metadata, the original monogram favicon, and locally hosted DM Sans.
 - `src/components/studio/studio.tsx`: persistent shell, section selection, and intro accessibility.
-- `character-story.ts`, `developer-character.tsx`, `hello-bubble.tsx`: articulated voxel rig, greeting, one-handed profile pull-up, and varied work/break cycle with a fading frustration bubble and contact-limited desk bonk. No external character model is required.
+- `character-story.ts`, `developer-character.tsx`, `hello-bubble.tsx`: articulated voxel rig, IVL pickup and cup-raise greeting, camera follow to the desk, and varied work/break cycle with a fading frustration bubble and contact-limited desk bonk. No external character model is required.
+- `coffee-entry.tsx`, `coffee-station.tsx`, and `workspace-coffee.tsx`: hold-to-brew input, a 3D espresso station, and one persistent iced vanilla glass shared by the station, hand, and desk.
 - `cinematic-stage.tsx`: keeps the canvas mounted while the character reveals the portfolio. The keyboard skip-to-content link and reduced motion provide immediate access; loading stays visually silent, and unavailable WebGL immediately unlocks the portfolio.
 - `workspace-stage.tsx` and `workspace-scene.tsx`: transparent full-viewport rendering, lighting, responsive off-axis camera framing, unrestricted trackball rotation, and zoom. A separate layout-sized gesture surface leaves page controls and scrolling accessible while allowing artwork to render beyond its slot.
 - `scroll-navigation.tsx` and `src/lib/scroll-detent.ts`: proportional reading, progressive boundary resistance, touch momentum, keyboard navigation, and the right-edge indicator. One section is displayed at a time.

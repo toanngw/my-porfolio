@@ -5,6 +5,7 @@ import { advanceStory, type CharacterStory, type ActorPose } from "./character-s
 import { HelloBubble } from "./hello-bubble";
 import { playDeskThump, playHelloGreeting } from "@/lib/studio-audio";
 import { Coffee } from "./workspace-coffee";
+import { STATION_CUP, DESK_CUP } from "./coffee-station";
 import type { Breeze } from "./breeze";
 import { VoxelParts, type Voxel } from "./voxel-parts";
 
@@ -71,7 +72,7 @@ function solve(hip:Vector3,target:Vector3,l1:number,l2:number,bend:Vector3,knee:
  bend.addScaledVector(direction,-bend.dot(direction)).normalize();
  knee.copy(hip).addScaledVector(direction,along).addScaledVector(bend,Math.sqrt(Math.max(0,l1*l1-along*along)));
 }
-function Arm({side,clock,pose,lift,body}:{side:number;clock:RefObject<number>;pose:ActorPose;lift:RefObject<number>;body:RefObject<Group|null>}) {
+function Arm({side,clock,pose,lift,body,coffeeHand}:{side:number;clock:RefObject<number>;pose:ActorPose;lift:RefObject<number>;body:RefObject<Group|null>;coffeeHand?:RefObject<Group|null>}) {
  const upper=useRef<Group>(null),fore=useRef<Group>(null),hand=useRef<Group>(null),fingers=useRef<Group>(null);
  const v=useMemo(()=>({shoulder:new Vector3(),elbow:new Vector3(),wrist:new Vector3(),direction:new Vector3(),bend:new Vector3(),inverse:new Quaternion()}),[]);
  useFrame((_,delta)=>{
@@ -81,6 +82,14 @@ function Arm({side,clock,pose,lift,body}:{side:number;clock:RefObject<number>;po
   const swing=Math.sin(pose.gait+side*Math.PI/2)*pose.walk;
   v.wrist.set(MathUtils.lerp(side*.16,side*.35,stand),MathUtils.lerp(1.46+tap,1.05,stand),MathUtils.lerp(-.57,-.04+swing*.24,stand));
   if(sip>0)v.wrist.lerp(v.bend.set(.275,1.80,-.36),sip);
+  if(side===1&&pose.coffeeReach>0){
+   const target=pose.coffeePlace>0?DESK_CUP:STATION_CUP;
+   const yaw=body.current?.parent?.rotation.y??pose.yaw;
+   const dx=target[0]-pose.x,dz=target[2]-pose.z,cos=Math.cos(yaw),sin=Math.sin(yaw);
+   v.bend.set(cos*dx-sin*dz,target[1]-stand*.38-.02,sin*dx+cos*dz+.08);
+   v.bend.lerp(v.direction.set(.33,1.55+pose.coffeeToast*.25,-.38),pose.coffeeCarry);
+   v.wrist.lerp(v.bend,pose.coffeeReach);
+  }
   if(side===1&&pose.wave>0)v.wrist.lerp(v.bend.set(.48,2.10,-.07),pose.wave);
   if(side===1&&pose.pullReach>0){
    // Curved upward stroke: lower page edge to above the shoulder, with a soft elbow.
@@ -94,10 +103,11 @@ function Arm({side,clock,pose,lift,body}:{side:number;clock:RefObject<number>;po
   v.bend.set(side*.8,-.35,.12);solve(v.shoulder,v.wrist,.32,.34,v.bend,v.elbow,v.direction);
   upper.current.position.copy(v.shoulder);v.direction.copy(v.elbow).sub(v.shoulder);upper.current.scale.y=v.direction.length()/.28;upper.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
   fore.current.position.copy(v.elbow);v.direction.copy(v.wrist).sub(v.elbow);fore.current.scale.z=v.direction.length()/.33;fore.current.quaternion.setFromUnitVectors(forward,v.direction.normalize());
-  if(fingers.current)fingers.current.rotation.x=side===1?-pose.pullGrip*1.18:0;
+  if(fingers.current)fingers.current.rotation.x=side===1?-Math.max(pose.pullGrip,pose.coffeeGrip)*1.18:0;
   hand.current.position.copy(v.wrist);hand.current.rotation.set(stand*.6+(side===1?pose.pullReach*.8:0),0,side===1?Math.sin(t*10)*pose.wave*.5:0);
   if(pose.bonk>.8&&body.current)hand.current.quaternion.copy(v.inverse.copy(body.current.quaternion).invert());
   else hand.current.rotation.x=MathUtils.damp(hand.current.rotation.x,stand*.6+pose.wave*.8+tap*3+(side===1?pose.pullReach*.8:0),12,delta);
+  if(coffeeHand)coffeeHand.current=hand.current;
  });
  return <><group ref={upper}><VoxelParts parts={sleeve}/></group><group ref={fore}><VoxelParts parts={forearm}/></group><group ref={hand}>
    <VoxelParts parts={[handParts[0],handParts[5]]}/>
@@ -122,8 +132,8 @@ function Leg({side,pose}:{side:number;pose:ActorPose}){
  });
  return <><group ref={thigh} scale={[side,1,1]}><VoxelParts parts={thighParts}/></group><group ref={shin} scale={[side,1,1]}><VoxelParts parts={shinParts}/></group><group ref={shoe} scale={[side,1,1]}><VoxelParts parts={shoeParts}/></group></>;
 }
-export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease}:{clock:RefObject<number>;active:boolean;breeze:RefObject<Breeze>;story:RefObject<CharacterStory>;reduced:boolean;onRelease:()=>void}) {
- const root=useRef<Group>(null),head=useRef<Group>(null),eyes=useRef<Group>(null),body=useRef<Group>(null),pelvis=useRef<Group>(null),chair=useRef<Group>(null),bubble=useRef<Group>(null),swear=useRef<Group>(null),mug=useRef<Group>(null);
+export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,running=true}:{clock:RefObject<number>;active:boolean;breeze:RefObject<Breeze>;story:RefObject<CharacterStory>;reduced:boolean;onRelease:()=>void;running?:boolean}) {
+ const root=useRef<Group>(null),head=useRef<Group>(null),eyes=useRef<Group>(null),body=useRef<Group>(null),pelvis=useRef<Group>(null),chair=useRef<Group>(null),bubble=useRef<Group>(null),swear=useRef<Group>(null),coffeeHand=useRef<Group>(null);
  const lift=useRef(0),reaction=useRef(-100),released=useRef(false),lastImpact=useRef(-1),helloOpacity=useRef(0),swearOpacity=useRef(0),corner=useRef(new Vector3());
  const pose=story.current.pose;
  const helloPlayed=useRef(false);
@@ -150,7 +160,7 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease}
   return()=>{window.removeEventListener('click',retry);window.removeEventListener('keydown',retry);};
  },[active,greetVisitor]);
  useFrame(({pointer,gl},delta)=>{
-  if(active)advanceStory(story.current,Math.min(delta,.05),reduced);
+  if(active&&running)advanceStory(story.current,Math.min(delta,.1),reduced);
   const state=story.current,t=state.elapsed,p=state.pose;
   if(active&&greetingVisit.current!==state.greetingVisit){
    greetingVisit.current=state.greetingVisit;
@@ -163,16 +173,16 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease}
   if(state.released&&!released.current){released.current=true;onRelease();}
   if(state.phase==='bonk'&&state.time>=.55&&lastImpact.current!==state.cycle){lastImpact.current=state.cycle;playDeskThump();}
   // Keep a blocked welcome pending beyond the wave; reduced motion still gets a hello.
-  if(active&&!helloAttempt.current.requested&&((state.phase==='wave'&&p.bubble>.15)||state.skipped)){
+  if(active&&running&&!helloAttempt.current.requested&&(((state.phase==='wave'||state.phase==='coffee-toast')&&p.bubble>.15)||state.skipped)){
    helloAttempt.current.requested=true;
    if(state.skipped)reaction.current=t;
    greetVisitor();
   }
-  const c=state.time%24;lift.current=state.phase==='work'?MathUtils.smoothstep(c,13.4,15.3)*(1-MathUtils.smoothstep(c,18,20)):0;
+  const c=state.time%24;lift.current=state.phase==='settle'&&!reduced?MathUtils.smoothstep(c,.15,.85)*(1-MathUtils.smoothstep(c,1.35,2.3)):state.phase==='work'?MathUtils.smoothstep(c,13.4,15.3)*(1-MathUtils.smoothstep(c,18,20)):0;
   const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025;
   if(greet>0){p.bubble=Math.max(p.bubble,Math.sin(greet*Math.PI));if(state.phase==='work'&&!reduced)p.wave=Math.max(p.wave,Math.sin(greet*Math.PI));}
-  if(root.current){root.current.position.set(p.x,0,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y+=angle*(1-Math.exp(-9*delta));}
-  if(chair.current)chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;
+  if(root.current){root.current.visible=running;root.current.position.set(p.x,0,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
+  if(chair.current){chair.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
   if(pelvis.current)pelvis.current.position.set(0,height,p.bonk*SCOOT);
   if(head.current){
    const attention=p.pullReach;
@@ -202,7 +212,6 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease}
   helloOpacity.current=p.bubble;swearOpacity.current=p.swear;
   if(bubble.current){bubble.current.position.set(p.x,3.25+Math.sin(t*6)*.055,p.z);bubble.current.scale.setScalar(Math.max(.001,p.bubble));bubble.current.visible=p.bubble>.001;}
   if(swear.current){swear.current.position.set(p.x,2.92+Math.sin(t*7)*.045,p.z);swear.current.scale.setScalar(1+Math.sin(t*8)*.025);swear.current.visible=p.swear>.001;}
-  if(mug.current){mug.current.position.set(-.65+MathUtils.lerp(.5,.13,lift.current),MathUtils.lerp(1.49,1.80,lift.current),.64+MathUtils.lerp(-.53,-.36,lift.current));mug.current.rotation.x=lift.current*.25;}
   gl.domElement.dataset.characterPhase=state.phase;gl.domElement.dataset.storyTime=state.time.toFixed(2);gl.domElement.dataset.storyElapsed=state.elapsed.toFixed(2);gl.domElement.dataset.reveal=state.reveal.toFixed(3);gl.domElement.dataset.bonk=p.bonk.toFixed(3);
  },-2.5);
  return <group name="voxel-developer">
@@ -211,12 +220,31 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease}
    <group ref={pelvis}><VoxelParts parts={pelvisParts}/></group>
    <group ref={body} position={[0,HIP,0]}><group position={[0,-HIP,0]}>
     <VoxelParts parts={torsoParts}/><group ref={head} position={[0,2.025,-.01]} onClick={event=>{if(active&&event.delta<6){event.stopPropagation();reaction.current=story.current.elapsed;void playHelloGreeting();}}}><VoxelParts parts={headParts}/><group ref={eyes} position={[0,.025,-.276]}><VoxelParts parts={eyeParts}/></group></group>
-    <Arm side={-1} clock={clock} pose={pose} lift={lift} body={body}/><Arm side={1} clock={clock} pose={pose} lift={lift} body={body}/>
+    <Arm side={-1} clock={clock} pose={pose} lift={lift} body={body}/><Arm side={1} clock={clock} pose={pose} lift={lift} body={body} coffeeHand={coffeeHand}/>
    </group></group>
    <Leg side={-1} pose={pose}/><Leg side={1} pose={pose}/>
   </group>
   <group ref={bubble} visible={false}><HelloBubble opacity={helloOpacity}/></group>
   <group ref={swear} visible={false}><HelloBubble kind="frustrated" opacity={swearOpacity}/></group>
-  <group ref={mug} position={[-.15,1.49,.11]}><Coffee clock={clock} active={active} breeze={breeze}/></group>
+  <CarriedCoffee clock={clock} active={active} breeze={breeze} story={story} hand={coffeeHand} lift={lift}/>
  </group>;
+}
+
+function CarriedCoffee({clock,active,breeze,story,hand,lift}:{clock:RefObject<number>;active:boolean;breeze:RefObject<Breeze>;story:RefObject<CharacterStory>;hand:RefObject<Group|null>;lift:RefObject<number>}){
+ const cup=useRef<Group>(null),point=useRef(new Vector3());
+ useFrame(({gl})=>{
+  if(!cup.current)return;
+  const s=story.current,p=s.pose,atDesk=s.coffee.atDesk||s.phase==='coffee-place';
+  cup.current.position.fromArray(atDesk?DESK_CUP:STATION_CUP);
+  if(hand.current&&p.coffeeGrip>0){
+   point.current.set(0,.02,-.08);hand.current.localToWorld(point.current);cup.current.parent?.worldToLocal(point.current);
+   cup.current.position.lerp(point.current,p.coffeeGrip);
+  }else if(atDesk&&s.phase==='work'){
+   cup.current.position.set(-.65+MathUtils.lerp(.5,.13,lift.current),MathUtils.lerp(1.49,1.80,lift.current),.64+MathUtils.lerp(-.53,-.36,lift.current));
+  }
+  cup.current.rotation.x=atDesk?lift.current*.25:0;
+  gl.domElement.dataset.coffeeLocation=p.coffeeGrip>.99?'hand':atDesk?'desk':'machine';
+  gl.domElement.dataset.coffeePosition=cup.current.position.toArray().map(n=>n.toFixed(3)).join(',');
+ });
+ return <group ref={cup} position={[...STATION_CUP]}><Coffee clock={clock} active={active} breeze={breeze} story={story}/></group>;
 }
