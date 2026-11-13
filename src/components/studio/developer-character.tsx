@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Group, MathUtils, Vector3, Quaternion } from "three";
 import { advanceStory, type CharacterStory, type ActorPose } from "./character-story";
 import { HelloBubble } from "./hello-bubble";
-import { playDeskThump, playHelloGreeting } from "@/lib/studio-audio";
+import { playDeskThump, playFootstep, playHelloGreeting, playKnock, playPageSwoosh, playPaperRustle } from "@/lib/studio-audio";
 import { Coffee } from "./workspace-coffee";
 import { STATION_CUP, DESK_CUP } from "./coffee-station";
 import type { Breeze } from "./breeze";
@@ -13,36 +13,77 @@ const skin="#dba580", light="#e8b694", shade="#c38b6a", hair="#302c2c", hairLigh
 const headParts:Voxel[]=[
  [0,0,0,.62,.57,.51,skin],[0,-.265,-.015,.49,.08,.43,shade],
  [0,.045,-.258,.51,.32,.018,light],
- // Ears, inner ear pixels, cheek planes and a shallow bridge.
- ...[-1,1].flatMap((s):Voxel[]=>[[s*.333,-.035,.01,.075,.16,.12,skin],[s*.372,-.025,-.025,.008,.07,.045,shade],[s*.232,-.11,-.263,.105,.09,.015,"#dca080"]]),
+ // Ears with tragus and helix detail.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.333,-.035,.01,.075,.16,.12,skin],[s*.372,-.025,-.025,.008,.07,.045,shade],[s*.355,-.04,-.01,.012,.045,.03,"#c5876a"],[s*.232,-.11,-.263,.105,.09,.015,"#dca080"],[s*.315,.03,-.01,.018,.035,.025,shade]]),
+ // Nose: bridge, tip, nostrils, philtrum.
  [0,-.035,-.287,.075,.115,.07,skin],[0,-.084,-.314,.105,.045,.04,light],
+ [0,-.025,-.298,.028,.085,.015,light],[0,-.082,-.32,.055,.022,.022,shade],
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.038,-.092,-.318,.018,.018,.016,"#c8846a"]]),
+ [0,-.115,-.288,.032,.042,.012,shade],
+ // Chin cleft and jaw definition.
+ [0,-.27,-.22,.08,.025,.03,shade],[0,-.278,-.21,.14,.018,.025,shade],
+ // Cheekbones with gentle highlight.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.225,-.06,-.258,.065,.055,.018,"#e8b98a"],[s*.21,-.085,-.272,.04,.035,.012,"#f0c698"]]),
  // Close cropped jaw line, separated moustache and a warm, smiling lip.
  [0,-.245,-.244,.37,.055,.048,hairLight],[0,-.21,-.265,.27,.042,.025,"#655047"],
  ...[-1,1].flatMap((s):Voxel[]=>[[s*.218,-.18,-.25,.065,.13,.035,hairLight],[s*.263,-.13,-.235,.038,.13,.04,hairLight],[s*.062,-.125,-.279,.1,.025,.025,hairLight],[s*.103,-.171,-.282,.025,.02,.018,"#8e5b4d"]]),
  [0,-.179,-.284,.18,.018,.018,"#945f51"],[0,-.197,-.282,.12,.015,.014,light],
+ // Upper lip bow and corner details.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.055,-.168,-.288,.028,.012,.012,"#c97060"],[s*.155,-.178,-.278,.018,.022,.01,"#b8674e"]]),
+ [0,-.195,-.29,.06,.018,.01,"#d47a68"],
  // Intentional stepped hair silhouette, undercut, sideburns and swept fringe.
- [0,.285,.025,.65,.12,.56,hair], [0,.353,.065,.53,.055,.45,hair],
+ [0,.285,.025,.65,.12,.56,hair],[0,.353,.065,.53,.055,.45,hair],
  [-.205,.39,.015,.19,.055,.36,hairLight],[-.07,.395,.065,.13,.04,.36,"#39322e"],
  [.235,.3,.01,.17,.15,.51,hair],[-.27,.255,.02,.12,.18,.52,hair],
  [0,.245,.235,.63,.22,.08,hair],
  ...[-1,1].flatMap((s):Voxel[]=>[[s*.295,.1,.065,.045,.23,.39,hair],[s*.28,-.027,-.195,.04,.1,.045,hairLight]]),
  [-.18,.23,-.27,.22,.12,.055,hairLight],[-.035,.265,-.274,.13,.1,.06,hair],[.08,.285,-.27,.12,.08,.06,hair],[.205,.26,-.26,.12,.085,.055,hair],
  [-.24,.18,-.27,.09,.08,.05,hair],
- // Eyebrows sit above the separately animated eyes.
+ // Hair texture strands on top.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.12,.41,.085,.04,.02,.3,"#39322e"],[s*.24,.375,.045,.035,.02,.28,"#2d2828"]]),
+ [0,.43,.095,.05,.02,.25,"#3a3030"],
+ // Eyebrows: thicker with tail taper and slight arch.
  [-.145,.102,-.273,.14,.028,.025,hair],[.145,.102,-.273,.14,.028,.025,hair],
+ [-.19,.098,-.271,.045,.022,.022,hair],[.19,.098,-.271,.045,.022,.022,hair],
+ [-.11,.108,-.274,.06,.02,.02,hairLight],[.11,.108,-.274,.06,.02,.02,hairLight],
+ // Under-eye shadow and lash line.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.145,-.038,-.278,.13,.008,.01,shade],[s*.145,.038,-.278,.118,.006,.008,hair]]),
 ];
-const eyeParts:Voxel[]=[...[-1,1].flatMap((s):Voxel[]=>[[s*.145,0,0,.126,.07,.018,"#f4dfc6"],[s*.132,-.003,-.012,.057,.064,.018,"#352f30"],[s*.132-.012,.015,-.024,.018,.018,.008,"#fff6dc"],[s*.145,-.04,.002,.128,.012,.012,shade]])];
+const eyeParts:Voxel[]=[
+ ...[-1,1].flatMap((s):Voxel[]=>[
+  [s*.145,0,0,.126,.07,.018,"#f4dfc6"],          // white sclera
+  [s*.132,-.003,-.012,.057,.064,.018,"#352f30"],  // iris + pupil
+  [s*.132,-.002,-.016,.03,.03,.01,"#28202a"],     // pupil dark center
+  [s*.132-.012,.015,-.024,.018,.018,.008,"#fff6dc"],// catchlight
+  [s*.132+.008,.018,-.022,.009,.009,.006,"#ffe8b8"],// secondary catchlight
+  [s*.145,-.04,.002,.128,.012,.012,shade],         // lower lid
+  [s*.145,.04,.001,.12,.01,.01,"#c8956a"],         // upper lid crease
+ ])
+];
 const bodyParts:Voxel[]=[
+ // Torso: henley with layered collar, chest seam and ribbed hem.
  [0,1.35,.02,.58,.62,.36,sage],[0,1.65,.045,.48,.12,.4,seam],[0,1.72,-.005,.18,.12,.18,skin],
+ // Collar: fold-over with visible inner and button placket.
  [0,1.655,-.187,.24,.07,.05,"#9cbbb0"],[0,1.54,-.176,.014,.22,.014,seam],
- ...[-1,1].flatMap((s):Voxel[]=>[[s*.09,1.55,-.19,.015,.15,.014,"#dfd9bd"],[s*.09,1.475,-.19,.024,.025,.024,"#c4b799"],[s*.205,1.14,-.18,.04,.11,.025,seam]]),
+ [0,1.71,-.19,.12,.025,.025,"#4a6b63"],[0,1.72,-.196,.055,.018,.018,"#3d5a53"],
+ // Button placket with three buttons.
+ ...[0,1,2].map((i):Voxel=>[0,1.69-i*.065,-.194,.018,.018,.01,"#8ab5a8"]),
+ ...[0,1,2].map((i):Voxel=>[0,1.69-i*.065,-.199,.008,.008,.005,"#2a4a44"]),
+ // Chest pocket.
+ [-.21,1.56,-.185,.085,.075,.018,"#4f7169"],[-.21,1.595,-.189,.075,.008,.012,"#3d5a53"],
+ // Sleeve seams and cuff rings.
+ ...[-1,1].flatMap((s):Voxel[]=>[[s*.09,1.55,-.19,.015,.15,.014,"#dfd9bd"],[s*.09,1.475,-.19,.024,.025,.024,"#c4b799"],[s*.205,1.14,-.18,.04,.11,.025,seam],[s*.185,1.08,-.18,.025,.025,.025,"#3d5a53"]]),
+ // Lower shirt band and waist hem with contrast stitch.
  [0,1.15,-.174,.32,.13,.035,"#63867b"],[0,1.08,.02,.57,.06,.37,seam],
+ [0,1.065,.02,.55,.014,.35,"#4a6b63"],
  // Seated thighs, trouser hems, ankles and layered sneaker soles.
  ...[-1,1].flatMap((s):Voxel[]=>[
  [s*.16,.95,-.13,.25,.24,.61,"#343d49"],[s*.16,.62,-.37,.23,.55,.24,"#343d49"],
  [s*.16,.6,-.496,.16,.38,.012,"#414c58"],[s*.16,.348,-.37,.24,.06,.25,"#29333f"],
  [s*.16,.27,-.38,.16,.11,.17,"#d9b18d"],[s*.16,.17,-.46,.26,.16,.4,"#e4ddcc"],
+ // Shoe: tongue tab, toe cap, sole edge.
  [s*.16,.095,-.47,.28,.055,.43,"#b7c1b9"],[s*.16,.2,-.58,.23,.055,.14,"#f2e9d6"],
+ [s*.16,.14,-.575,.2,.035,.12,"#d8d4ca"],[s*.16,.085,-.58,.26,.018,.14,"#8a9490"],
  ...[0,1,2].map((i):Voxel=>[s*.16,.258-i*.014,-.46-i*.04,.13,.012,.018,"#fff2d7"]),
  [s*.295,.17,-.44,.014,.045,.12,sage]])
 ];
@@ -55,7 +96,8 @@ const chairParts:Voxel[]=[
 const handParts:Voxel[]=[[0,0,0,.13,.065,.13,skin],...Array.from({length:4},(_,i):Voxel=>[-.048+i*.032,-.006,-.1,.026,.046,.11,i%2?skin:light]),[.08,-.015,-.025,.045,.05,.08,shade]];
 const sleeve:Voxel[]=[[0,-.14,0,.22,.28,.23,sage],[0,-.265,0,.205,.04,.22,seam]];
 const forearm:Voxel[]=[[0,0,.14,.17,.17,.28,sage],[0,0,.29,.175,.15,.045,"#86a296"]];
-
+// Watch sits on the left forearm, just clear of the sleeve cuff.
+const watchedForearm:Voxel[]=[...forearm,[0,0,.255,.185,.185,.055,"#3a4048"],[0,.098,.255,.05,.012,.05,"#c8bfb0"],[0,.104,.255,.038,.008,.038,"#1a2228"]];
 const torsoParts=bodyParts.filter(part=>part[1]>1.04);
 const thighParts:Voxel[]=[[0,-.23,0,.25,.46,.24,"#343d49"],[.126,-.23,0,.009,.35,.12,"#414c58"]];
 const shinDetails:Voxel[]=bodyParts.filter(p=>p[0]>0&&p[1]>.30&&p[1]<.9).map(([x,y,z,w,h,d,c])=>[x-.16,y-.95,z+.37,w,h,d,c]);
@@ -97,19 +139,25 @@ function Arm({side,clock,pose,lift,body,coffeeHand}:{side:number;clock:RefObject
    v.wrist.lerp(v.bend.set(.43+Math.sin(lift*Math.PI)*.055,1.19+lift*.88,-.46+lift*.23),pose.pullReach);
   }
   if(pose.anger>0)v.wrist.lerp(v.bend.set(side*.48,(side===1?2.08:1.94)+Math.sin(t*9)*.025,side===1?-.18:-.32),pose.anger);
+  // Knocking fist near the face, thrusting toward the door on each strike.
+  if(side===1&&pose.knock>0)v.wrist.lerp(v.bend.set(.1,1.9+pose.knockImpact*.06,-.42-pose.knockImpact*.16),pose.knock);
+  // Left hand reaches the handle, then pushes the leaf away from the visitor.
+  if(side===-1&&pose.push>0)v.wrist.lerp(v.bend.set(-.14,1.2+.04*pose.push,-.42-pose.push*.24),pose.push);
+  // A cheerful lift of both arms while airborne.
+  if(pose.hopArms>0)v.wrist.lerp(v.bend.set(side*.3,1.62+pose.hopArms*.18,-.12),pose.hopArms*.7);
   if(pose.bonk>0&&body.current){
    v.bend.set(side*.38,1.425,-.45).sub(body.current.position).applyQuaternion(v.inverse.copy(body.current.quaternion).invert());v.bend.y+=HIP;v.wrist.lerp(v.bend,pose.bonk);
   }
   v.bend.set(side*.8,-.35,.12);solve(v.shoulder,v.wrist,.32,.34,v.bend,v.elbow,v.direction);
   upper.current.position.copy(v.shoulder);v.direction.copy(v.elbow).sub(v.shoulder);upper.current.scale.y=v.direction.length()/.28;upper.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
   fore.current.position.copy(v.elbow);v.direction.copy(v.wrist).sub(v.elbow);fore.current.scale.z=v.direction.length()/.33;fore.current.quaternion.setFromUnitVectors(forward,v.direction.normalize());
-  if(fingers.current)fingers.current.rotation.x=side===1?-Math.max(pose.pullGrip,pose.coffeeGrip)*1.18:0;
-  hand.current.position.copy(v.wrist);hand.current.rotation.set(stand*.6+(side===1?pose.pullReach*.8:0),0,side===1?Math.sin(t*10)*pose.wave*.5:0);
+  if(fingers.current)fingers.current.rotation.x=side===1?-Math.max(pose.pullGrip,pose.coffeeGrip,pose.knock)*1.18:side===-1?-pose.push*.5:0;
+  hand.current.position.copy(v.wrist);hand.current.rotation.set(stand*.6+(side===1?pose.pullReach*.8:0)+pose.knock*.45,0,side===1?Math.sin(t*10)*pose.wave*.5:0);
   if(pose.bonk>.8&&body.current)hand.current.quaternion.copy(v.inverse.copy(body.current.quaternion).invert());
-  else hand.current.rotation.x=MathUtils.damp(hand.current.rotation.x,stand*.6+pose.wave*.8+tap*3+(side===1?pose.pullReach*.8:0),12,delta);
+  else hand.current.rotation.x=MathUtils.damp(hand.current.rotation.x,stand*.6+pose.wave*.8+tap*3+(side===1?pose.pullReach*.8+pose.knock*.45:0),12,delta);
   if(coffeeHand)coffeeHand.current=hand.current;
  });
- return <><group ref={upper}><VoxelParts parts={sleeve}/></group><group ref={fore}><VoxelParts parts={forearm}/></group><group ref={hand}>
+ return <><group ref={upper}><VoxelParts parts={sleeve}/></group><group ref={fore}><VoxelParts parts={side===-1?watchedForearm:forearm}/></group><group ref={hand}>
    <VoxelParts parts={[handParts[0],handParts[5]]}/>
    <group ref={fingers} position={[0,0,-.055]}><group position={[0,0,.055]}><VoxelParts parts={handParts.slice(1,5)}/></group></group>
   </group></>;
@@ -121,10 +169,10 @@ function Leg({side,pose}:{side:number;pose:ActorPose}){
   if(!thigh.current||!shin.current||!shoe.current)return;
   const phase=((pose.gait/(Math.PI*2)+(side===1?.5:0))%1),swing=phase>.6?Math.sin((phase-.6)/.4*Math.PI):0;
   const stride=phase<.6?-.18+phase/.6*.36:.18-((phase-.6)/.4)*.36;
-  v.hip.set(side*.16,.95+pose.stand*.38-pose.walk*.025,pose.bonk*SCOOT);
+  v.hip.set(side*.16,.95+pose.stand*.38-pose.walk*.025-pose.crouch*.16,pose.bonk*SCOOT);
   // Stance slides backward in actor coordinates as the root advances; swing lifts only on return.
   const adjust=MathUtils.smoothstep(pose.stand,side===1?.25:0,side===1?1:.75);
-  v.ankle.set(side*.16,.2625+swing*.095*pose.walk+Math.sin(adjust*Math.PI)*.07*(1-pose.walk),MathUtils.lerp(-.37,-.035,adjust)+stride*pose.walk);
+  v.ankle.set(side*.16,.2625+swing*.095*pose.walk+Math.sin(adjust*Math.PI)*.07*(1-pose.walk)+pose.tuck*.3,MathUtils.lerp(-.37,-.035,adjust)+stride*pose.walk+pose.tuck*.2);
   v.bend.set(0,0,-1);solve(v.hip,v.ankle,.46,.62,v.bend,v.knee,v.direction);
   thigh.current.position.copy(v.hip);v.direction.copy(v.knee).sub(v.hip);thigh.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
   shin.current.position.copy(v.knee);v.direction.copy(v.ankle).sub(v.knee);shin.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
@@ -135,6 +183,7 @@ function Leg({side,pose}:{side:number;pose:ActorPose}){
 export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,running=true}:{clock:RefObject<number>;active:boolean;breeze:RefObject<Breeze>;story:RefObject<CharacterStory>;reduced:boolean;onRelease:()=>void;running?:boolean}) {
  const root=useRef<Group>(null),head=useRef<Group>(null),eyes=useRef<Group>(null),body=useRef<Group>(null),pelvis=useRef<Group>(null),chair=useRef<Group>(null),bubble=useRef<Group>(null),swear=useRef<Group>(null),coffeeHand=useRef<Group>(null);
  const lift=useRef(0),reaction=useRef(-100),released=useRef(false),lastImpact=useRef(-1),helloOpacity=useRef(0),swearOpacity=useRef(0),corner=useRef(new Vector3());
+ const cues=useRef({key:"",fired:new Set<string>(),knocks:0,step:0});
  const pose=story.current.pose;
  const helloPlayed=useRef(false);
  const greetingVisit=useRef(story.current.greetingVisit);
@@ -173,15 +222,30 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
   if(state.released&&!released.current){released.current=true;onRelease();}
   if(state.phase==='bonk'&&state.time>=.55&&lastImpact.current!==state.cycle){lastImpact.current=state.cycle;playDeskThump();}
   // Keep a blocked welcome pending beyond the wave; reduced motion still gets a hello.
-  if(active&&running&&!helloAttempt.current.requested&&(((state.phase==='wave'||state.phase==='coffee-toast'||state.phase==='door-welcome')&&p.bubble>.15)||state.skipped)){
+  if(active&&running&&!helloAttempt.current.requested&&((state.phase==='wave'||state.phase==='coffee-toast')&&p.bubble>.15||state.skipped)){
    helloAttempt.current.requested=true;
    if(state.skipped)reaction.current=t;
    greetVisitor();
   }
+  // Soft walking, knocking and paper cues driven by the story, once per phase.
+  if(active&&running){
+   const key=`${state.greetingVisit}:${state.phase}`;
+   const mark=(name:string)=>{if(cues.current.key!==key){cues.current.key=key;cues.current.fired.clear();}if(cues.current.fired.has(name))return false;cues.current.fired.add(name);return true;};
+   const step=Math.floor(p.gait/Math.PI);
+   if(p.walk>.25&&p.walk<.95){if(cues.current.key!==key||cues.current.step!==step){cues.current.step=step;playFootstep(p.walk*.7);}}
+   if(state.phase==='door-hop'){
+    if(mark('launch'))playPageSwoosh();
+    if(state.time>.72&&mark('land'))playDeskThump();
+   }
+   if(state.phase==='door-knock'&&state.door.knocks>cues.current.knocks){cues.current.knocks=state.door.knocks;playKnock();}
+   if(state.phase==='door-open'&&state.door.opening&&mark('latch')){playKnock();}
+   if(state.phase==='pull-reach'&&state.time>.55&&mark('grip'))playPaperRustle();
+   if(state.phase==='pull-lift'&&mark('lift'))playPageSwoosh();
+  }
   const c=state.time%24;lift.current=state.phase==='settle'&&!reduced?MathUtils.smoothstep(c,.15,.85)*(1-MathUtils.smoothstep(c,1.35,2.3)):state.phase==='work'?MathUtils.smoothstep(c,13.4,15.3)*(1-MathUtils.smoothstep(c,18,20)):0;
-  const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025;
+  const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025-p.crouch*.1;
   if(greet>0){p.bubble=Math.max(p.bubble,Math.sin(greet*Math.PI));if(state.phase==='work'&&!reduced)p.wave=Math.max(p.wave,Math.sin(greet*Math.PI));}
-  if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,0,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
+  if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,p.hop,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
   if(chair.current){chair.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
   if(pelvis.current)pelvis.current.position.set(0,height,p.bonk*SCOOT);
   if(head.current){

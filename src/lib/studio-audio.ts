@@ -196,6 +196,99 @@ class StudioAudio {
     source.connect(filter).connect(gain).connect(this.output);this.track(source,[filter,gain]);source.start(time);source.stop(time+.14);
   }
 
+  /** Cached noise for the short, unpitched walking and door cues below. */
+  private noiseBuffer: AudioBuffer | null = null;
+  private noise(ctx: AudioContext) {
+    if(!this.noiseBuffer||this.noiseBuffer.length!==Math.ceil(ctx.sampleRate*.5)){
+      this.noiseBuffer=ctx.createBuffer(1,Math.ceil(ctx.sampleRate*.5),ctx.sampleRate);
+      const data=this.noiseBuffer.getChannelData(0);
+      for(let i=0;i<data.length;i++)data[i]=Math.random()*2-1;
+    }
+    return this.noiseBuffer;
+  }
+
+  /** A padded footstep: filtered noise for the sole, a quiet low body for the weight. */
+  async footstep(volume=.5){
+    if(!(await this.unlock())||!this.context||!this.output)return;
+    const ctx=this.context,time=ctx.currentTime;
+    if(this.voices.size>=8)return;
+    const length=.09,vary=.92+Math.random()*.16;
+    const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+    source.buffer=this.noise(ctx);
+    filter.type="bandpass";filter.frequency.value=(430+Math.random()*170)*vary;filter.Q.value=1.1;
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(.13*volume,time+.008);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+length);
+    source.connect(filter).connect(gain).connect(this.output);
+    this.track(source,[filter,gain]);source.start(time);source.stop(time+length+.01);
+    const body=ctx.createOscillator(),bodyGain=ctx.createGain();
+    body.type="sine";body.frequency.setValueAtTime(104*vary,time);body.frequency.exponentialRampToValueAtTime(62*vary,time+.06);
+    bodyGain.gain.setValueAtTime(.0001,time);bodyGain.gain.exponentialRampToValueAtTime(.075*volume,time+.006);
+    bodyGain.gain.exponentialRampToValueAtTime(.0001,time+.08);
+    body.connect(bodyGain).connect(this.output);this.track(body,[bodyGain]);body.start(time);body.stop(time+.09);
+  }
+
+  /** Knuckles on hollow wood: a muffled body tone, a dry click and a short low thud. */
+  async knock(){
+    if(!(await this.unlock())||!this.context||!this.output)return;
+    const ctx=this.context,time=ctx.currentTime;
+    if(this.voices.size>=9)return;
+    const wood=ctx.createOscillator(),woodFilter=ctx.createBiquadFilter(),woodGain=ctx.createGain();
+    wood.type="triangle";
+    wood.frequency.setValueAtTime(178,time);wood.frequency.exponentialRampToValueAtTime(126,time+.05);
+    woodFilter.type="bandpass";woodFilter.frequency.value=320;woodFilter.Q.value=2.4;
+    woodGain.gain.setValueAtTime(.0001,time);woodGain.gain.exponentialRampToValueAtTime(.3,time+.002);
+    woodGain.gain.exponentialRampToValueAtTime(.0001,time+.075);
+    wood.connect(woodFilter).connect(woodGain).connect(this.output);
+    this.track(wood,[woodFilter,woodGain]);wood.start(time);wood.stop(time+.09);
+    const click=ctx.createBufferSource(),clickFilter=ctx.createBiquadFilter(),clickGain=ctx.createGain();
+    click.buffer=this.noise(ctx);
+    clickFilter.type="highpass";clickFilter.frequency.value=1700;
+    clickGain.gain.setValueAtTime(.5,time);clickGain.gain.exponentialRampToValueAtTime(.0001,time+.012);
+    click.connect(clickFilter).connect(clickGain).connect(this.output);
+    this.track(click,[clickFilter,clickGain]);click.start(time);click.stop(time+.02);
+    const thud=ctx.createOscillator(),thudGain=ctx.createGain();
+    thud.type="sine";thud.frequency.setValueAtTime(82,time);thud.frequency.exponentialRampToValueAtTime(58,time+.06);
+    thudGain.gain.setValueAtTime(.0001,time);thudGain.gain.exponentialRampToValueAtTime(.16,time+.004);
+    thudGain.gain.exponentialRampToValueAtTime(.0001,time+.07);
+    thud.connect(thudGain).connect(this.output);this.track(thud,[thudGain]);thud.start(time);thud.stop(time+.08);
+  }
+
+  /** A paper-page lift: airy rising band of noise as the page edge is pulled up. */
+  async swoosh(){
+    if(!(await this.unlock())||!this.context||!this.output)return;
+    const ctx=this.context,time=ctx.currentTime;
+    const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+    source.buffer=this.noise(ctx);
+    filter.type="bandpass";filter.Q.value=1.1;
+    filter.frequency.setValueAtTime(340,time);
+    filter.frequency.exponentialRampToValueAtTime(2250,time+.33);
+    filter.frequency.exponentialRampToValueAtTime(780,time+.62);
+    gain.gain.setValueAtTime(.0001,time);
+    gain.gain.exponentialRampToValueAtTime(.13,time+.12);
+    gain.gain.exponentialRampToValueAtTime(.0001,time+.68);
+    source.connect(filter).connect(gain).connect(this.output);
+    this.track(source,[filter,gain]);source.start(time);source.stop(time+.7);
+  }
+
+  /** A small paper grip: three dry, quiet crinkles. */
+  async rustle(){
+    if(!(await this.unlock())||!this.context||!this.output)return;
+    const ctx=this.context,time=ctx.currentTime;
+    if(this.voices.size>=8)return;
+    for(const [delay,level] of [[0,.5],[.07,.32],[.13,.2]] as const){
+      const source=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),gain=ctx.createGain();
+      source.buffer=this.noise(ctx);
+      filter.type="highpass";filter.frequency.value=1150+Math.random()*700;
+      const start=time+delay;
+      gain.gain.setValueAtTime(.0001,start);
+      gain.gain.exponentialRampToValueAtTime(.07*level,start+.005);
+      gain.gain.exponentialRampToValueAtTime(.0001,start+.05);
+      source.connect(filter).connect(gain).connect(this.output);
+      this.track(source,[filter,gain]);source.start(start);source.stop(start+.06);
+    }
+  }
+
   readSpectrum(data: Uint8Array<ArrayBuffer>) {
     if (this.analyser) this.analyser.getByteFrequencyData(data);
     else data.fill(0);
@@ -226,5 +319,13 @@ export function playScrollTick() { void studioAudio.click().catch(() => {}); }
 export function playBoundaryClack() { void studioAudio.clack().catch(() => {}); }
 
 export function playDeskThump(){void studioAudio.thump().catch(()=>{});}
+
+export function playFootstep(volume?:number){void studioAudio.footstep(volume).catch(()=>{});}
+
+export function playKnock(){void studioAudio.knock().catch(()=>{});}
+
+export function playPageSwoosh(){void studioAudio.swoosh().catch(()=>{});}
+
+export function playPaperRustle(){void studioAudio.rustle().catch(()=>{});}
 
 export function playHelloGreeting(){return studioAudio.hello().catch(()=>false);}

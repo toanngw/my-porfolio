@@ -4,7 +4,7 @@ import ts from 'typescript';
 const source=readFileSync(new URL('../src/components/studio/character-story.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
 const api={};new Function('exports',compiled)(api);
-const {createStory,advanceStory,skipStory}=api;
+const {createStory,advanceStory,skipStory,answerDoor}=api;
 const story=createStory(),seen=new Set(),workLengths=new Set();
 let last={...story.pose},reveal=0,workStart=0,previous=story.phase,impacts=0,lastImpact=0;
 for(let i=0;i<60*220;i++){
@@ -53,16 +53,38 @@ console.log('Character timeline passed: continuous pickup and walking, held IVL 
 const door=createStory('door');
 assert.equal(door.entry,'door');assert.equal(door.started,false);assert.equal(door.reveal,0);
 assert.equal(door.coffee.atDesk,true,'Door entry keeps coffee on the desk');
-let doorReveal=0,doorGreeting=false;
-for(let i=0;i<60*4;i++){
+assert.equal(door.phase,'door-idle');
+let unopenedReveal=0,knocks=0,lastKnock=0,hopSeen=false,tuckSeen=false;
+for(let i=0;i<60*5;i++){
  advanceStory(door,1/60,false);
  assert(!door.phase.startsWith('coffee-'),'Door entry must not run the preserved coffee pickup');
+ assert(door.reveal>=unopenedReveal,'The door welcome must reveal content without rewinding');unopenedReveal=door.reveal;
+ assert.equal(door.reveal,0,'Keep the portfolio hidden while the door is unanswered');
+ assert.equal(door.pose.coffeeGrip,0,'Door entry must not grab a glass');
+ if(door.pose.knockImpact>lastKnock+.5)knocks++;
+ lastKnock=door.pose.knockImpact;
+ if(door.pose.hop>.2)hopSeen=true;
+ if(door.pose.tuck>.2)tuckSeen=true;
+}
+assert(hopSeen,'He must hop off the chair');assert(tuckSeen,'The hop must tuck his legs');
+assert(knocks>=2,'He must knock at least twice');assert(door.door.knocks>=2);
+assert(['door-knock','door-wait'].includes(door.phase),'He waits at the door until answered');
+assert.equal(door.door.answered,false);
+answerDoor({current:door});
+let doorGreeting=false,doorReveal=0,answeredAt=door.elapsed;
+for(let i=0;i<60*30&&door.phase!=='work';i++){
+ advanceStory(door,1/60,false);
  assert(door.reveal>=doorReveal,'The door welcome must reveal content without rewinding');doorReveal=door.reveal;
  if(door.pose.bubble>.15)doorGreeting=true;
  assert.equal(door.pose.coffeeGrip,0,'Door entry must not grab a glass');
 }
-assert(doorGreeting,'Welcome visitors after entering');assert(door.released);assert.equal(door.reveal,1);
-assert.equal(door.phase,'work');
+assert(doorGreeting,'Welcome visitors after opening the door');
+assert(door.door.opening,'Answering the door must start the opening');assert(door.door.progress>=0);
+assert(door.elapsed-answeredAt<20,'The intro must finish in reasonable time');
+assert.equal(door.phase,'work');assert(door.released);assert.equal(door.reveal,1);
 const doorSkip=createStory('door');skipStory(doorSkip);advanceStory(doorSkip,.016,true);
-assert.equal(doorSkip.phase,'work');assert.equal(doorSkip.reveal,1);
-console.log('Door timeline passed: seated greeting, independent coffee mode, monotonic reveal, and skip recovery.');
+assert.equal(doorSkip.phase,'work');assert.equal(doorSkip.reveal,1);assert.equal(doorSkip.door.done,true);
+const doorReduced=createStory('door');
+for(let i=0;i<60*20&&doorReduced.phase!=='work';i++){advanceStory(doorReduced,1/60,true);if(doorReduced.phase==='door-knock')answerDoor({current:doorReduced});}
+assert.equal(doorReduced.phase,'work');assert.equal(doorReduced.reveal,1);
+console.log('Door timeline passed: chair hop, walk to the door, two knocks, wait for the visitor, opening, greeting, pull-up reveal, skip and reduced-motion recovery.');

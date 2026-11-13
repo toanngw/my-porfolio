@@ -20,6 +20,11 @@ const CAMERA = new Vector3(5.2, 2.72, -6.3).add(TARGET);
 const CAMERA_OPTIONS={position:CAMERA.toArray(),zoom:70,near:0.01,far:200,manual:true};
 const MIN_ZOOM=0.45,MAX_ZOOM=2.5;
 const WORLD_UP=new Vector3(0,1,0);
+/** The window must show a warm room, not the page through a transparent canvas. */
+function yieldRoom(gl:{setClearColor:(color:number,alpha?:number)=>void},progress:number){
+ if(progress<.995)gl.setClearColor(0x2a2018,1);
+ else gl.setClearColor(0x000000,0);
+}
 function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,interaction,reduced}:Pick<SceneProps,"active"|"controls"|"story"|"anchor"|"coffeeAnchor"|"interaction"|"reduced">){
  const controls=useRef<TrackballControlsImpl>(null),idle=useRef({interacting:false,resumeAt:0}),fit=useRef(70),previousFit=useRef(0),sample=useRef(0);
  const {size,get,invalidate}=useThree();
@@ -50,15 +55,37 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
   orbit.enabled=s.released;
   const frame=coffeeAnchor.current?.getBoundingClientRect();
   if(frame)Object.assign(coffeeFrame.current,{width:frame.width,height:frame.height,cx:frame.left+frame.width/2,cy:frame.top+frame.height/2});
-  if(s.entry==='door'&&!s.started){
-   const door=coffeeAnchor.current,progress=s.door.progress;
-   const roomFit=Math.min((door?.clientWidth??280)/3.5,(door?.clientHeight??450)/3.3);
-   orbit.target.copy(TARGET);camera.position.copy(CAMERA);camera.up.set(0,1,0);camera.lookAt(TARGET);
-   camera.zoom=MathUtils.lerp(roomFit,layoutFit,progress);previousFit.current=layoutFit;fit.current=layoutFit;
-   const centerX=frame?frame.left+frame.width/2:size.width/2,centerY=frame?frame.top+frame.height/2:size.height/2;
-   const shiftX=(size.width/2-MathUtils.lerp(centerX,size.width/2,progress))/camera.zoom,shiftY=(MathUtils.lerp(centerY,size.height/2,progress)-size.height/2)/camera.zoom;
-   const projection=camera as OrthographicCamera;projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
+  if(s.entry==='door'&&!s.door.done){
+   const door=coffeeAnchor.current,progress=s.door.progress,d=s.door;
+   // The glazed window must show a room, not the page behind the canvas.
+   const room=yieldRoom(gl,progress);
+   const rect=door?.getBoundingClientRect();
+   // Match the glazed opening in globals.css: 16% inset, 68% by 40% of the leaf.
+   const win=rect?{width:rect.width*.68,height:rect.height*.40,left:rect.left+rect.width*.16,top:rect.top+rect.height*.16}:null;
+   // A peephole that follows him: you see him at the desk, then walking to the door.
+   const follow=MathUtils.smoothstep(d.presence,0,1);
+   const winFit=win?Math.min(win.width/1.4,win.height/1.45):Math.min((rect?.width??280)/3.6,(rect?.height??450)/3.4);
+   // As the leaf swings, ease out from the glazed opening to the whole doorway.
+   const pull=Math.max(follow*.35,MathUtils.smoothstep(progress,0,1));
+   const doorFit=win?MathUtils.lerp(winFit,Math.min(rect!.width/3.1,rect!.height/3.35),pull):winFit;
+   const doorCenterX=win?MathUtils.lerp(win.left+win.width/2,rect!.left+rect!.width/2,pull):size.width/2;
+   const doorCenterY=win?MathUtils.lerp(win.top+win.height/2,rect!.top+rect!.height/2,pull):size.height/2;
+   // Aim straight at him so the peephole keeps him centred as he walks up.
+   const targetX=s.pose.x,targetY=2.0,targetZ=s.pose.z;
+   // Once the doorway beat ends, hand the framing back to the normal layout.
+   const handoff=MathUtils.smoothstep(d.handoff,0,1);
+   orbit.target.set(MathUtils.lerp(targetX,TARGET.x,handoff),MathUtils.lerp(targetY,TARGET.y,handoff),MathUtils.lerp(targetZ,TARGET.z,handoff));
+   camera.position.set(CAMERA.x,CAMERA.y-.75*(1-handoff),CAMERA.z);
+   camera.up.set(0,1,0);camera.lookAt(orbit.target);
+   camera.zoom=MathUtils.lerp(doorFit,layoutFit,handoff);previousFit.current=layoutFit;fit.current=layoutFit;
+   const centerX=MathUtils.lerp(win?doorCenterX:size.width/2,cx,handoff),centerY=MathUtils.lerp(win?doorCenterY:size.height/2,cy,handoff);
+   const projection=camera as OrthographicCamera,shiftX=(size.width/2-centerX)/camera.zoom,shiftY=(centerY-size.height/2)/camera.zoom;
+   projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
    gl.domElement.dataset.doorProgress=progress.toFixed(3);
+   gl.domElement.dataset.doorFollow=follow.toFixed(2);
+   gl.domElement.dataset.doorTarget=orbit.target.toArray().map(n=>n.toFixed(2)).join(',');
+   gl.domElement.dataset.doorZoom=camera.zoom.toFixed(1);
+   gl.domElement.dataset.doorActor=[s.pose.x,s.pose.z].map(n=>n.toFixed(2)).join(',');
    return;
   }
   if(s.phase.startsWith('coffee-')&&!s.skipped){

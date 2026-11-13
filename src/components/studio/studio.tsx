@@ -74,7 +74,7 @@ export function Studio() {
         <div className="header-controls"><SoundControls autoPlay={introComplete}/><ThemeToggle /></div>
       </header>
       <main id="main" className="studio-main">
-        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} coffeeAnchor={coffeeAnchor} clock={clock} story={story} running={introStarted||introComplete} onRelease={finish} onUnavailable={unavailable} onSceneReady={()=>setSceneReady(true)}/></CinematicStage>
+        <CinematicStage anchor={sceneAnchor} story={story} complete={introComplete} panel={content} spacer={spacer} onReveal={reveal}><WorkspaceStage anchor={sceneAnchor} coffeeAnchor={coffeeAnchor} clock={clock} story={story} running={entry==='door'||introStarted||introComplete} onRelease={finish} onUnavailable={unavailable} onSceneReady={()=>setSceneReady(true)}/></CinematicStage>
         <div className="content-frame" inert={!introComplete}><div ref={content} className="content-panel" role="region" aria-label="Portfolio sections" tabIndex={0}>
           {!introComplete&&<div ref={spacer} className="intro-scroll-spacer" aria-hidden="true"/>}
           {views.map(item=><div key={item} className="scroll-section" hidden={introComplete&&view!==item} data-scroll-view={item} data-active={view===item}><ViewContent view={item}/></div>)}
