@@ -1,9 +1,12 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, Mesh, MathUtils, type Material } from "three";
-import { Box } from "./scene-primitives";
 import { VoxelParts } from "./voxel-parts";
 import type { CharacterStory } from "./character-story";
+
+function Box({position,size,color,rotation}:{position:[number,number,number];size:[number,number,number];color:string;rotation?:[number,number,number];radius?:number}){
+ return <group position={position} rotation={rotation}><VoxelParts parts={[[0,0,0,...size,color]]}/></group>;
+}
 
 export const STATION_CUP = [-.94, 1.6, -2.91] as const;
 export const DESK_CUP = [-.15, .71, .11] as const;
@@ -30,6 +33,8 @@ export function CoffeeStation({ story }: { story: RefObject<CharacterStory> }) {
     const shown = !s.released && !s.skipped && (s.entry!=="door" || s.door.handoff>0 || !s.phase.startsWith("door-"));
     appearance.current = MathUtils.damp(appearance.current, shown ? 1 : 0, 7, Math.min(delta,.1));
     if (group.current) group.current.visible = appearance.current>.005;
+    // Three.js materials are mutable renderer resources, not React state.
+    // eslint-disable-next-line react-hooks/immutability
     for (const item of materials.current) item.material.opacity=item.opacity*appearance.current;
     if (lever.current) lever.current.rotation.z = MathUtils.damp(lever.current.rotation.z, s.coffee.brewing ? -.5 : 0, 12, Math.min(delta,.1));
     if (stream.current) stream.current.visible = s.coffee.brewing;
@@ -52,6 +57,10 @@ export function CoffeeStation({ story }: { story: RefObject<CharacterStory> }) {
     <Box position={[-.05,2.04,-.45]} size={[.14,.1,.11]} color="#b4c2ad" radius={.01}/>
     <Box position={[0,1.4,-.28]} size={[1.03,.065,.74]} color="#889a87" radius={.008}/>
     <VoxelParts parts={Array.from({length:13},(_,i)=>[-.45+i*.075,1.437,-.28,.025,.005,.64,"#354b3d"])}/>
+    <VoxelParts parts={[
+      ...Array.from({length:14},(_,i):[number,number,number,number,number,number,string]=>[-.4+i*.06,2.53,-.26,.028,.018,.014,"#17221f"]),
+      ...Array.from({length:5},(_,i):[number,number,number,number,number,number,string]=>[-.37+i*.09,2.31,-.17,.045,.025,.018,i===0?"#ba9565":"#83988a"]),
+    ]}/>
     <mesh ref={light} position={[-.21,2.27,-.163]}><boxGeometry args={[.28,.015,.01]}/><meshStandardMaterial color="#edbc73" emissive="#de9437" emissiveIntensity={1.5}/></mesh>
     <group ref={stream} position={[-.05,1.86,-.45]} visible={false}>{[-.035,.035].map(x=><mesh key={x} position={[x,0,0]}><cylinderGeometry args={[.006,.007,.31,6]}/><meshStandardMaterial color="#b8874b" transparent opacity={.85}/></mesh>)}</group>
     <group ref={lever} position={[.6,2.2,.03]}>
