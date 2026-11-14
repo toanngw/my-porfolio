@@ -8,20 +8,13 @@ import { sampleBreeze, type Breeze } from "./breeze";
 export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const visible = usePageVisible(), dark = useDarkTheme();
-  const weather = useRef({ snow: 0, wind: { strength: 0, phase: 0, x: 0, z: 0 } as Breeze });
-
-  const particles = useRef(Array.from({ length: 84 }, (_, i) => ({
-      x: ((i * 0.61803399) % 1), y: ((i * 0.41421356) % 1),
-      radius: 0.85 + (i % 5) * 0.28, speed: 13 + (i % 7) * 3.7,
-      opacity: 0.3 + (i % 4) * 0.085,
-    })));
+  const weather = useRef({ wind: { strength: 0, phase: 0, x: 0, z: 0 } as Breeze });
 
   useEffect(() => {
     const surface = canvas.current;
     const context = surface?.getContext("2d");
     if (!surface || !context) return;
     let width = 0, height = 0, frame = 0, last = 0;
-    const flakes = particles.current;
     const resize = () => {
       width = window.innerWidth; height = window.innerHeight;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
@@ -37,24 +30,7 @@ export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
       if (moving) clock.current += delta;
       const state = weather.current;
       sampleBreeze(clock.current, state.wind);
-      const target = dark ? 1 : 0;
-      state.snow = moving ? target + (state.snow - target) * Math.exp(-delta * 12) : target;
       context.clearRect(0, 0, width, height);
-
-      // Full-height travel: wrapping happens beyond the screen, never mid-frame.
-      if (state.snow > 0.001) flakes.forEach((flake, i) => {
-        if (moving) {
-          flake.y += flake.speed * delta / (height + 24);
-          flake.x += (Math.sin(clock.current * 0.45 + i) * 3 + state.wind.x * 14) * delta / (width + 48);
-          if (flake.y > 1) flake.y -= 1;
-          if (flake.x > 1) flake.x -= 1;
-          if (flake.x < 0) flake.x += 1;
-        }
-        context.beginPath();
-        context.arc(flake.x * (width + 48) - 24, flake.y * (height + 24) - 12, flake.radius, 0, Math.PI * 2);
-        context.fillStyle = `rgba(246,247,250,${flake.opacity * state.snow})`;
-        context.fill();
-      });
 
       // Open calligraphic arcs, sampled once per stroke. Every path extends
       // beyond both viewport edges, so no scene-sized clipping rectangle exists.
@@ -80,10 +56,9 @@ export function ViewportAtmosphere({ clock }: { clock: RefObject<number> }) {
           context.lineCap = "round"; context.stroke();
         }
       }
-      surface.dataset.snow = dark ? "visible" : "hidden";
       surface.dataset.wind = state.wind.strength.toFixed(3);
       surface.dataset.time = clock.current.toFixed(2);
-      if (visible && (moving || Math.abs(state.snow - target) > 0.001)) frame = requestAnimationFrame(draw);
+      if (visible) frame = requestAnimationFrame(draw);
     };
     window.addEventListener("resize", resize);
     resize();

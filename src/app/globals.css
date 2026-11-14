@@ -365,3 +365,13 @@ p { text-wrap: pretty; }
 .content-frame { z-index: 3; }
 .studio-app[data-intro="playing"] .scene-frame { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 31; }
 .studio-app[data-intro="playing"] .webgl-viewport { z-index: 30; }
+
+/* The actor draws the profile in from beyond the right viewport edge. */
+.studio-app[data-intro="playing"] .content-frame {
+  opacity: 1;
+  transform: translateX(calc((1 - var(--story-reveal)) * 100vw));
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .studio-app[data-intro="playing"] .content-frame { transform: none; opacity: var(--story-reveal); }
+}

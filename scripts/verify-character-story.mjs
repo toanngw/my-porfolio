@@ -52,7 +52,7 @@ console.log('Character timeline passed: continuous pickup and walking, held IVL 
 
 const door=createStory('door');
 assert.equal(door.entry,'door');assert.equal(door.started,false);assert.equal(door.reveal,0);
-assert.equal(door.coffee.atDesk,true,'Door entry keeps coffee on the desk');
+assert.equal(door.coffee.atDesk,false,'Coffee starts at the machine');
 assert.equal(door.phase,'door-idle');
 let unopenedReveal=0,knocks=0,lastKnock=0,hopSeen=false,tuckSeen=false;
 for(let i=0;i<60*5;i++){
@@ -72,19 +72,24 @@ assert(['door-knock','door-wait'].includes(door.phase),'He waits at the door unt
 assert.equal(door.door.answered,false);
 answerDoor({current:door});
 let doorGreeting=false,doorReveal=0,answeredAt=door.elapsed;
+const doorPhases=[];
 for(let i=0;i<60*30&&door.phase!=='work';i++){
  advanceStory(door,1/60,false);
  assert(door.reveal>=doorReveal,'The door welcome must reveal content without rewinding');doorReveal=door.reveal;
  if(door.pose.bubble>.15)doorGreeting=true;
- assert.equal(door.pose.coffeeGrip,0,'Door entry must not grab a glass');
+ if(doorPhases.at(-1)!==door.phase)doorPhases.push(door.phase);
+ if(door.phase==='wave')assert(door.coffee.atDesk,'Finish coffee before greeting');
+ if(!door.phase.startsWith('pull-')&&!door.released)assert.equal(door.reveal,0);
 }
 assert(doorGreeting,'Welcome visitors after opening the door');
+const expected=['door-open','door-exit','coffee-enter','coffee-brew','coffee-pickup','coffee-return-front','coffee-return-side','coffee-place','exit','approach','wave','pull-reach','pull-lift','pull-release'];
+assert.deepEqual(doorPhases.filter(p=>expected.includes(p)),expected);
 assert(door.door.opening,'Answering the door must start the opening');assert(door.door.progress>=0);
-assert(door.elapsed-answeredAt<20,'The intro must finish in reasonable time');
+assert(door.elapsed-answeredAt<30,'The intro must finish in reasonable time');
 assert.equal(door.phase,'work');assert(door.released);assert.equal(door.reveal,1);
 const doorSkip=createStory('door');skipStory(doorSkip);advanceStory(doorSkip,.016,true);
 assert.equal(doorSkip.phase,'work');assert.equal(doorSkip.reveal,1);assert.equal(doorSkip.door.done,true);
 const doorReduced=createStory('door');
-for(let i=0;i<60*20&&doorReduced.phase!=='work';i++){advanceStory(doorReduced,1/60,true);if(doorReduced.phase==='door-knock')answerDoor({current:doorReduced});}
+for(let i=0;i<60*35&&doorReduced.phase!=='work';i++){advanceStory(doorReduced,1/60,true);if(doorReduced.phase==='door-knock')answerDoor({current:doorReduced});}
 assert.equal(doorReduced.phase,'work');assert.equal(doorReduced.reveal,1);
 console.log('Door timeline passed: chair hop, walk to the door, two knocks, wait for the visitor, opening, greeting, pull-up reveal, skip and reduced-motion recovery.');

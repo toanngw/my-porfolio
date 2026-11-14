@@ -11,9 +11,10 @@ export function CinematicStage({story,children,complete,panel,spacer,onReveal,an
   const draw=()=>{
    const p=story.current.reveal;onReveal(p);
    if(panel.current){
-    if(spacer.current)spacer.current.style.height=`${panel.current.clientHeight}px`;
-    const top=panel.current.clientHeight*p;panel.current.scrollTop=top;
-    if(top-lastTop>40&&performance.now()-lastTick>60){playScrollTick();lastTop=top;lastTick=performance.now();}
+    if(spacer.current)spacer.current.style.height="0px";
+    panel.current.scrollTop=0;
+    const distance=window.innerWidth*p;
+    if(distance-lastTop>40&&performance.now()-lastTick>60){playScrollTick();lastTop=distance;lastTick=performance.now();}
    }
    frame=requestAnimationFrame(draw);
   };

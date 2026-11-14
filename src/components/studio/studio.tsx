@@ -56,8 +56,8 @@ export function Studio() {
     window.history[fromScroll?"replaceState":"pushState"](null,"",`#${target}`);
     window.dispatchEvent(new Event("popstate-scroll"));
   }, []);
-  return <div ref={shell} className="studio-app" data-entry={entry} data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>studioAudio.prepare()} onKeyDownCapture={()=>studioAudio.prepare()} onClickCapture={event => {
-    studioAudio.prepare();
+  return <div ref={shell} className="studio-app" data-entry={entry} data-intro={introComplete?"complete":"playing"} data-view-transition={navigationMotion} onPointerDownCapture={()=>void studioAudio.prepare(true)} onKeyDownCapture={()=>void studioAudio.prepare(true)} onClickCapture={event => {
+    void studioAudio.prepare(true);
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
     const anchor = (event.target as Element).closest("a");
     if (anchor && anchor.origin === window.location.origin && anchor.pathname === window.location.pathname && views.some(item => anchor.hash === `#${item}`)) {event.preventDefault();goTo(viewFromHash(anchor.hash));}
@@ -66,7 +66,7 @@ export function Studio() {
     {!introComplete&&entry==='coffee'&&<div className="coffee-backdrop" aria-hidden="true"/>}
     {!introStarted&&!introComplete&&entry==='door'&&<DoorEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor}/>}
     {!introStarted&&!introComplete&&entry==='coffee'&&<CoffeeEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor} sceneReady={sceneReady}/>}
-    {(introStarted||introComplete)&&<a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>}
+    {<a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>}
     <ViewportAtmosphere clock={clock} />
     <div className="app-shell" inert={!introStarted&&!introComplete}>
       <header className="app-header" inert={!introComplete}>

@@ -73,14 +73,14 @@ export function DoorEntry({ story, sceneAnchor, onReady }: { story: RefObject<Ch
         if (raw >= 1) { m.finishedAt = now; setStage("leaving"); }
       }
       // After the doorway beat, ease the camera back to the page layout.
-      if (story.current.phase === "door-exit" && !door.done) {
+      if ((story.current.phase === "door-exit" || door.handoff > 0) && !door.done) {
         door.handoff = Math.min(1, door.handoff + delta / 850);
         if (door.handoff >= 1) door.done = true;
       }
       root.current?.style.setProperty("--door-open", String(m.progress));
       root.current?.style.setProperty("--door-shake", String(Math.max(0, door.impact) * 3.2));
       root.current?.style.setProperty("--door-fade", String(Math.max(0, 1 - door.handoff * 1.35)));
-      if (m.finishedAt && (now - m.finishedAt > 2600 || door.done)) { lifecycle.controller?.stop(); readyCallback.current(); return; }
+      if (m.finishedAt && (now - m.finishedAt > 2600 || door.done)) { door.done = true; door.handoff = 1; lifecycle.controller?.stop(); readyCallback.current(); return; }
       frame = requestAnimationFrame(tick);
     };
     const cancel = () => { if (!motion.current.opening) { lifecycle.controller?.update(motion.current.progress, 0); } };
@@ -117,8 +117,7 @@ export function DoorEntry({ story, sceneAnchor, onReady }: { story: RefObject<Ch
       </div>
       <div className="door-caption">
         <h1>{stage === "leaving" ? "Make yourself at home." : stage === "answering" ? "Coming out." : knocks > 0 ? "Knock knock." : "Someone's at the door."}</h1>
-        <p id="door-instruction">{stage === "knocking" ? "He's on his way. Click the door to answer." : stage === "answering" ? "The door is opening." : "Welcome to my little corner of the internet."}</p>
-        <span className="door-drag-hint" aria-hidden="true">{stage === "knocking" ? <>↗ <span>CLICK TO ANSWER</span></> : <span>WELCOME IN</span>}</span>
+        <p id="door-instruction">{stage === "knocking" ? "Open the door to come in." : stage === "answering" ? "The door is opening." : "Welcome to my little corner of the internet."}</p>
       </div>
     </div>
     <span className="sr-only" role="status">{stage === "knocking" ? "Someone is knocking at the studio door. Click the door, or focus it and press Enter, to answer." : stage === "answering" ? "The door is opening." : "Welcome to the studio. Your portfolio is loading."}</span>

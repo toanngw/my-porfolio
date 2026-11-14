@@ -50,7 +50,7 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
   const box=anchor.current?.getBoundingClientRect(),p=story.current.reveal;
   const width=box?.width??size.width,height=box?.height??size.height;
   const cx=MathUtils.lerp(size.width/2,(box?.left??0)+width/2,p),cy=MathUtils.lerp(size.height/2,(box?.top??0)+height/2,p);
-  const introFit=Math.min(size.width/3.7,size.height/4.5),slotFit=Math.min(width/3.6,height/2.95),layoutFit=MathUtils.lerp(introFit,slotFit,p);
+  const introFit=Math.min(size.width/6.8,size.height/4.8),slotFit=Math.min(width/3.6,height/2.95),layoutFit=MathUtils.lerp(introFit,slotFit,p);
   const s=story.current;
   orbit.enabled=s.released;
   const frame=coffeeAnchor.current?.getBoundingClientRect();
@@ -88,7 +88,7 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
    gl.domElement.dataset.doorActor=[s.pose.x,s.pose.z].map(n=>n.toFixed(2)).join(',');
    return;
   }
-  if(s.phase.startsWith('coffee-')&&!s.skipped){
+  if(s.entry==='coffee'&&s.phase.startsWith('coffee-')&&!s.skipped){
    const smooth=(n:number)=>{const t=MathUtils.clamp(n,0,1);return t*t*(3-2*t);};
    const travel=s.phase==='coffee-return-front'?smooth(s.time/2)*.55:s.phase==='coffee-return-side'?.55+smooth(s.time/1.65)*.45:['coffee-place','coffee-sit'].includes(s.phase)?1:0;
    const shot=coffeeFrame.current;
@@ -104,6 +104,13 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
    anchor.current?.closest<HTMLElement>('.studio-app')?.style.setProperty('--coffee-world',String(follow));
    gl.domElement.dataset.coffeeCamera=follow<1?'following':'desk';
    return;
+  }
+  // Restore the room camera after the doorway overlay unmounts, even when its
+  // watchdog completed the handoff before the final door animation frame.
+  if(s.entry==='door'&&!s.released){
+   orbit.target.copy(TARGET);
+   camera.position.copy(CAMERA);
+   camera.up.set(0,1,0);camera.lookAt(orbit.target);
   }
   if(!previousFit.current)camera.zoom=layoutFit;
   else if(Math.abs(layoutFit-previousFit.current)>.001)camera.zoom*=layoutFit/previousFit.current;
@@ -153,7 +160,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
       if (readyFrames.current === 2) onReady(); else invalidate();
     }
     sampleBreeze(elapsed.current,breeze.current);
-    if(desk.current)desk.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(props.story.current.phase);
+    if(desk.current)desk.current.visible=props.story.current.entry==='door'||!['coffee-enter','coffee-pickup','coffee-toast'].includes(props.story.current.phase);
     if(desk.current){const impact=props.story.current.pose.impact;desk.current.position.y=impact*.004;desk.current.rotation.z=Math.sin(props.story.current.elapsed*65)*impact*.004;}
     gl.domElement.dataset.pivot=compositionRef.current?.position.toArray().join(",")??"";
     sample.current+=delta;
@@ -170,7 +177,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     <directionalLight position={[4,3,4]} intensity={1.1} color="#a8c7e8" />
     <group ref={artworkRef} name="workspace-artwork">
     <group ref={desk}><CodingDesk {...ambient}/></group>
-    {props.story.current.entry==='coffee'&&<CoffeeStation story={props.story}/>}
+    <CoffeeStation story={props.story}/>
     <DeveloperCharacter {...ambient} running={props.running} story={props.story} reduced={props.reduced} onRelease={props.onRelease}/>
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={Infinity} color="#08080b" />

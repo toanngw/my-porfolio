@@ -23,7 +23,7 @@ class StudioAudio {
       this.limiter.attack.value=.002;this.limiter.release.value=.075;
       this.output.connect(this.limiter).connect(this.analyser).connect(this.context.destination);
     }
-    if (this.context.state === "suspended") {
+    if (this.context.state !== "running" && this.context.state !== "closed") {
       if (!gesture && !navigator.userActivation?.hasBeenActive) return false;
       await this.context.resume();
     }

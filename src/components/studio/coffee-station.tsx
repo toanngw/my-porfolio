@@ -14,12 +14,12 @@ export function CoffeeStation({ story }: { story: RefObject<CharacterStory> }) {
   const light = useRef<Mesh>(null);
   useFrame((_, delta) => {
     const s = story.current;
-    if (group.current) group.current.visible = !s.released && !s.skipped;
+    if (group.current) group.current.visible = !s.released && !s.skipped && (s.entry!=="door" || !s.phase.startsWith("door-"));
     if (lever.current) lever.current.rotation.z = MathUtils.damp(lever.current.rotation.z, s.coffee.brewing ? -.5 : 0, 12, Math.min(delta,.1));
     if (stream.current) stream.current.visible = s.coffee.brewing;
     if (light.current) light.current.scale.x = Math.max(.01, s.coffee.progress);
   });
-  return <group ref={group} name="ivl-coffee-station" position={[1.6, 0, -1.2]}>
+  return <group ref={group} visible={false} name="ivl-coffee-station" position={[1.6, 0, -1.2]}>
     <Box position={[0, 1.26, 0]} size={[1.5, .11, 1.05]} color="#76553e" radius={.01}/>
     {[-.62,.62].map(x=><Box key={x} position={[x,.61,.22]} size={[.055,1.22,.055]} color="#343b37" radius={.006}/>)}
     <Box position={[0,1.98,.17]} size={[1.05,1.32,.54]} color="#252e2d" radius={.025}/>

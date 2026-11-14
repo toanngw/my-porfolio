@@ -134,9 +134,9 @@ function Arm({side,clock,pose,lift,body,coffeeHand}:{side:number;clock:RefObject
   }
   if(side===1&&pose.wave>0)v.wrist.lerp(v.bend.set(.48,2.10,-.07),pose.wave);
   if(side===1&&pose.pullReach>0){
-   // Curved upward stroke: lower page edge to above the shoulder, with a soft elbow.
+   // Reach sideways, grip the offscreen page, and draw it toward the torso.
    const lift=pose.pullLift;
-   v.wrist.lerp(v.bend.set(.43+Math.sin(lift*Math.PI)*.055,1.19+lift*.88,-.46+lift*.23),pose.pullReach);
+   v.wrist.lerp(v.bend.set(.85-lift*.6,1.55,-.12-lift*.3),pose.pullReach);
   }
   if(pose.anger>0)v.wrist.lerp(v.bend.set(side*.48,(side===1?2.08:1.94)+Math.sin(t*9)*.025,side===1?-.18:-.32),pose.anger);
   // Knocking fist near the face, thrusting toward the door on each strike.
@@ -211,6 +211,8 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
  useFrame(({pointer,gl},delta)=>{
   if(active&&running)advanceStory(story.current,Math.min(delta,.1),reduced);
   const state=story.current,t=state.elapsed,p=state.pose;
+  gl.domElement.dataset.storyPhase=state.phase;
+  gl.domElement.dataset.storyReveal=state.reveal.toFixed(3);
   if(active&&greetingVisit.current!==state.greetingVisit){
    greetingVisit.current=state.greetingVisit;
    helloPlayed.current=false;
@@ -246,7 +248,7 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
   const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025-p.crouch*.1;
   if(greet>0){p.bubble=Math.max(p.bubble,Math.sin(greet*Math.PI));if(state.phase==='work'&&!reduced)p.wave=Math.max(p.wave,Math.sin(greet*Math.PI));}
   if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,p.hop,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
-  if(chair.current){chair.current.visible=!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
+  if(chair.current){chair.current.visible=state.entry==='door'||!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
   if(pelvis.current)pelvis.current.position.set(0,height,p.bonk*SCOOT);
   if(head.current){
    const attention=p.pullReach;
