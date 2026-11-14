@@ -17,7 +17,7 @@ export function WorkspaceStage({ clock, story,anchor,coffeeAnchor,running,onRele
   const active=clientReady&&visible;
   const reduced=useReducedMotionPreference();
   return <><div className="workspace-stage" data-ready={ready} data-motion={active ? "running" : "paused"}>
-    <div ref={interaction} className="scene-frame" role="group" aria-busy={!ready&&!failed} aria-label="Interactive voxel developer at a wooden workstation with coffee and a plant" aria-describedby="scene-instructions" tabIndex={ready ? 0 : -1} onKeyDown={event=>{
+    <div ref={interaction} className="scene-frame" role="group" aria-busy={!ready&&!failed} aria-label="Interactive voxel developer at a low brick table with a vintage laptop and coffee" aria-describedby="scene-instructions" tabIndex={ready ? 0 : -1} onKeyDown={event=>{
       if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","+","=","-","Escape","Home"].includes(event.key)){event.preventDefault();controls.current?.key(event.key);}
     }}>
       {failed&&<p className="scene-loading" role="status">3D preview unavailable. Your portfolio is ready below.</p>}

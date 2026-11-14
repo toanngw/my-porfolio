@@ -280,7 +280,6 @@ p { text-wrap: pretty; }
 /* The distant ground fades at its edges, beyond the feet rather than at the footer. */
 
 /* Environmental strokes span the viewport beneath all content and controls. */
-.viewport-atmosphere { position: fixed; inset: 0; width: 100%; height: 100dvh; pointer-events: none; z-index: 0; }
 .app-header { position: relative; z-index: 20; }
 
 @media (max-width: 767px) {

@@ -1,27 +1,44 @@
-import { useRef, type RefObject } from "react";
+import { useLayoutEffect, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Group, Mesh, MathUtils } from "three";
+import { Group, Mesh, MathUtils, type Material } from "three";
 import { Box } from "./scene-primitives";
 import { VoxelParts } from "./voxel-parts";
 import type { CharacterStory } from "./character-story";
 
-export const STATION_CUP = [1.55, 1.6, -1.65] as const;
-export const DESK_CUP = [-.15, 1.49, .11] as const;
+export const STATION_CUP = [-.94, 1.6, -2.91] as const;
+export const DESK_CUP = [-.15, .71, .11] as const;
 
 /** This station and the actor share the workstation's renderer and coordinates. */
 export function CoffeeStation({ story }: { story: RefObject<CharacterStory> }) {
   const group = useRef<Group>(null), lever = useRef<Group>(null), stream = useRef<Group>(null);
   const light = useRef<Mesh>(null);
+  const appearance = useRef(0);
+  const materials = useRef<{material: Material; opacity: number}[]>([]);
+  useLayoutEffect(() => {
+    group.current?.traverse(object => {
+      if (!(object instanceof Mesh)) return;
+      for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+        materials.current.push({material, opacity: material.opacity});
+        material.transparent = true;
+        material.opacity = 0;
+      }
+    });
+    return () => { for (const item of materials.current) item.material.opacity=item.opacity; materials.current=[]; };
+  }, []);
   useFrame((_, delta) => {
     const s = story.current;
-    if (group.current) group.current.visible = !s.released && !s.skipped && (s.entry!=="door" || !s.phase.startsWith("door-"));
+    const shown = !s.released && !s.skipped && (s.entry!=="door" || s.door.handoff>0 || !s.phase.startsWith("door-"));
+    appearance.current = MathUtils.damp(appearance.current, shown ? 1 : 0, 7, Math.min(delta,.1));
+    if (group.current) group.current.visible = appearance.current>.005;
+    for (const item of materials.current) item.material.opacity=item.opacity*appearance.current;
     if (lever.current) lever.current.rotation.z = MathUtils.damp(lever.current.rotation.z, s.coffee.brewing ? -.5 : 0, 12, Math.min(delta,.1));
     if (stream.current) stream.current.visible = s.coffee.brewing;
     if (light.current) light.current.scale.x = Math.max(.01, s.coffee.progress);
   });
-  return <group ref={group} visible={false} name="ivl-coffee-station" position={[1.6, 0, -1.2]}>
+  return <group ref={group} visible={false} name="ivl-coffee-station" position={[-.9, 0, -2.55]}>
     <Box position={[0, 1.26, 0]} size={[1.5, .11, 1.05]} color="#76553e" radius={.01}/>
     {[-.62,.62].map(x=><Box key={x} position={[x,.61,.22]} size={[.055,1.22,.055]} color="#343b37" radius={.006}/>)}
+    <group position={[0,1.4,0]} scale={[.8,.7,.8]}><group position={[0,-1.4,0]}>
     <Box position={[0,1.98,.17]} size={[1.05,1.32,.54]} color="#252e2d" radius={.025}/>
     <Box position={[0,2.59,.1]} size={[1.12,.12,.7]} color="#414c47" radius={.015}/>
     <Box position={[0,2.38,-.135]} size={[.91,.28,.045]} color="#151f1d" radius={.012}/>
@@ -41,5 +58,6 @@ export function CoffeeStation({ story }: { story: RefObject<CharacterStory> }) {
       <Box position={[.08,.17,0]} size={[.025,.35,.025]} color="#b6c2ae" rotation={[0,0,-.3]} radius={.006}/>
       <Box position={[.12,.37,0]} size={[.1,.29,.1]} color="#8d5b36" rotation={[0,0,-.3]} radius={.035}/>
     </group>
+    </group></group>
   </group>;
 }

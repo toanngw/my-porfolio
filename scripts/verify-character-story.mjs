@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import {OrthographicCamera,Vector3} from 'three';
 const source=readFileSync(new URL('../src/components/studio/character-story.ts',import.meta.url),'utf8');
 const compiled=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText;
 const api={};new Function('exports',compiled)(api);
@@ -11,22 +12,26 @@ for(let i=0;i<60*220;i++){
  const pose=advanceStory(story,1/60,false);seen.add(story.phase);
  assert(Number.isFinite(pose.x)&&Number.isFinite(pose.z)&&Number.isFinite(pose.yaw));
  assert(pose.stand>=0&&pose.stand<=1);
+ assert(pose.sleep>=0&&pose.sleep<=1);
+ assert(Math.abs(pose.sleep-last.sleep)<.03,'Lying down and waking must be continuous');
+ if(story.phase==='sleep'){assert.equal(pose.sleep,1);assert.equal(pose.stand,0);assert(story.released);assert.equal(pose.coffeeGrip,0);}
+ if(story.phase==='work')assert.equal(pose.sleep,0);
  assert(Math.hypot(pose.x-last.x,pose.z-last.z)<.05,'Actor position must stay continuous at state boundaries');
  assert(story.reveal>=reveal,'Welcome reveal must never rewind');
  if(story.phase.startsWith('coffee-')&&story.phase!=='coffee-sit')assert.equal(story.reveal,0,'Keep the profile hidden until coffee is on the desk');
  assert(Math.abs(pose.coffeeGrip-last.coffeeGrip)<.14,'The glass must attach and release smoothly');
  if(pose.impact>0&&lastImpact===0)impacts++;
- if(pose.walk>.05)assert(pose.x>.9||pose.z>.60,'Walking route must clear the desk footprint');
+ if(pose.walk>.05)assert(pose.x>.9||pose.z>.60||pose.z<-2.7,'Walking route must clear the desk footprint');
  if(story.phase==='work'&&previous!=='work')workStart=story.elapsed;
  if(previous==='work'&&story.phase!=='work')workLengths.add(Math.round(story.elapsed-workStart));
  last={...pose};reveal=story.reveal;previous=story.phase;lastImpact=pose.impact;
 }
-for(const phase of ['coffee-enter','coffee-pickup','coffee-toast','coffee-return-front','coffee-return-side','coffee-place','coffee-sit','work','stare','exclaim','hands-up','bonk','recover','frustrated','break-stand','wander-out','wander-front','calm','wander-back','wander-home','break-sit'])assert(seen.has(phase),`Missing state ${phase}`);
-assert(impacts>=3&&impacts<=story.cycle+1,'One desk impact per frustration cycle');
+for(const phase of ['coffee-enter','coffee-pickup','coffee-toast','coffee-return-front','coffee-return-side','coffee-place','coffee-sit','work','lie-down','sleep','wake-up'])assert(seen.has(phase),`Missing state ${phase}`);
+assert.equal(impacts,0,'The work and sleep routine must not trigger desk impacts');
 assert(workLengths.size>1,'Work intervals must vary');
 assert(story.cycle>=3);assert(story.released);
 const reduced=createStory();for(let i=0;i<60*120;i++)advanceStory(reduced,1/60,true);
-assert.equal(reduced.phase,'work');assert.equal(reduced.pose.stand,0);assert.equal(reduced.reveal,1);
+assert.equal(reduced.phase,'work');assert.equal(reduced.pose.stand,0);assert.equal(reduced.pose.sleep,0);assert.equal(reduced.reveal,1);
 const skipped=createStory();advanceStory(skipped,.1,false);skipStory(skipped);advanceStory(skipped,.016,false);
 assert.equal(skipped.phase,'work');assert.equal(skipped.reveal,1);assert.equal(skipped.pose.x,-.65);assert.equal(skipped.pose.pullReach,0);
 for(const phase of ['coffee-pickup','coffee-toast','coffee-return-front','coffee-place']){
@@ -48,7 +53,7 @@ while(!pickup.released){
 }
 assert.equal(greetings,1,'Greet once after collecting the IVL');
 assert(pickup.coffee.atDesk,'Set the coffee down before releasing the portfolio');
-console.log('Character timeline passed: continuous pickup and walking, held IVL during return, set-down before reveal, one greeting, idle cycle, reduced motion, and interruption recovery.');
+console.log('Character timeline passed: continuous pickup and walking, held IVL during return, set-down before reveal, one greeting, work/sleep cycle, reduced motion, and interruption recovery.');
 
 const door=createStory('door');
 assert.equal(door.entry,'door');assert.equal(door.started,false);assert.equal(door.reveal,0);
@@ -93,3 +98,22 @@ const doorReduced=createStory('door');
 for(let i=0;i<60*35&&doorReduced.phase!=='work';i++){advanceStory(doorReduced,1/60,true);if(doorReduced.phase==='door-knock')answerDoor({current:doorReduced});}
 assert.equal(doorReduced.phase,'work');assert.equal(doorReduced.reveal,1);
 console.log('Door timeline passed: chair hop, walk to the door, two knocks, wait for the visitor, opening, greeting, pull-up reveal, skip and reduced-motion recovery.');
+
+// Validate the visible direction using the desktop camera, not world X alone.
+const camera=new OrthographicCamera(-4,4,3,-3,.01,200);
+camera.position.set(4.72,3.9,-6.065);camera.lookAt(-.48,1.18,.235);camera.updateMatrixWorld();
+const screenX=pose=>new Vector3(pose.x,1,pose.z).project(camera).x;
+const route=createStory('door');answerDoor({current:route});
+let entryStart,entryEnd,approachStart,approachEnd,previousPose={...route.pose};
+for(let i=0;i<60*40&&!route.released;i++){
+ advanceStory(route,1/60,false);
+ if(route.phase==='coffee-enter'){entryStart??=screenX(route.pose);entryEnd=screenX(route.pose);}
+ if(route.phase==='approach'){approachStart??=screenX(route.pose);approachEnd=screenX(route.pose);}
+ if(route.phase.startsWith('coffee-')||route.phase==='wave'||route.phase.startsWith('pull-')){
+  assert(Math.hypot(route.pose.x-previousPose.x,route.pose.z-previousPose.z)<.1,'Entrance route must not teleport');
+ }
+ previousPose={...route.pose};
+}
+assert(entryEnd-entryStart>.35,'Coffee approach must visibly move right in the desktop camera');
+assert(approachEnd-approachStart>.35,'Greeting approach must visibly move right in the desktop camera');
+console.log('Desktop direction passed: coffee and greeting routes move screen-right without teleporting.');

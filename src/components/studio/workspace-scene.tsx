@@ -8,8 +8,8 @@ import type { CharacterStory } from "./character-story";
 import { DeveloperCharacter } from "./developer-character";
 import { CodingDesk } from "./winter-world";
 import { CoffeeStation } from "./coffee-station";
-import { Atmosphere, InfiniteGround } from "./atmosphere";
-import { sampleBreeze, type Breeze } from "./breeze";
+import { InfiniteGround } from "./atmosphere";
+import type { Breeze } from "./breeze";
 import { supportsWebGL } from "@/lib/webgl-support";
 
 export type SceneCommands = { key: (key: string) => void };
@@ -49,7 +49,7 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
   const orbit=controls.current;if(!orbit)return;
   const box=anchor.current?.getBoundingClientRect(),p=story.current.reveal;
   const width=box?.width??size.width,height=box?.height??size.height;
-  const cx=MathUtils.lerp(size.width/2,(box?.left??0)+width/2,p),cy=MathUtils.lerp(size.height/2,(box?.top??0)+height/2,p);
+  const cx=MathUtils.lerp(size.width/2,(box?.left??0)+width/2,p)-width*.07*story.current.pose.sleep,cy=MathUtils.lerp(size.height/2,(box?.top??0)+height/2,p);
   const introFit=Math.min(size.width/6.8,size.height/4.8),slotFit=Math.min(width/3.6,height/2.95),layoutFit=MathUtils.lerp(introFit,slotFit,p);
   const s=story.current;
   orbit.enabled=s.released;
@@ -116,13 +116,17 @@ function CameraControls({active,controls:commandsRef,story,anchor,coffeeAnchor,i
   else if(Math.abs(layoutFit-previousFit.current)>.001)camera.zoom*=layoutFit/previousFit.current;
   previousFit.current=layoutFit;fit.current=layoutFit;
   if(story.current.phase!=="work"&&!idle.current.interacting&&performance.now()>idle.current.resumeAt){
-   const desired=layoutFit*(story.current.released?1-story.current.pose.stand*.22:1);camera.zoom=MathUtils.damp(camera.zoom,desired,6,Math.min(delta,.05));
+   const desired=layoutFit*(story.current.released?1-story.current.pose.stand*.22-story.current.pose.sleep*.38:1);camera.zoom=MathUtils.damp(camera.zoom,desired,6,Math.min(delta,.05));
   }
   camera.zoom=Math.max(layoutFit*MIN_ZOOM,Math.min(layoutFit*MAX_ZOOM,camera.zoom));orbit.maxDistance=Math.sqrt(layoutFit*MIN_ZOOM);
   // Off-axis orthographic projection places the scene at its layout anchor while
   // retaining the entire viewport as drawable space, including outside the slot.
   const projection=camera as OrthographicCamera;const shiftX=(size.width/2-cx)/camera.zoom,shiftY=(cy-size.height/2)/camera.zoom;projection.left=-size.width/2+shiftX;projection.right=size.width/2+shiftX;projection.top=size.height/2+shiftY;projection.bottom=-size.height/2+shiftY;projection.updateProjectionMatrix();
-  const autoRotate=story.current.released&&active&&!idle.current.interacting&&performance.now()>=idle.current.resumeAt;
+  const resting=['lie-down','sleep','wake-up'].includes(story.current.phase);
+  if(resting){
+   camera.position.lerp(CAMERA,1-Math.exp(-delta*3));orbit.target.lerp(TARGET,1-Math.exp(-delta*3));camera.up.set(0,1,0);camera.lookAt(orbit.target);
+  }
+  const autoRotate=!resting&&story.current.released&&active&&!idle.current.interacting&&performance.now()>=idle.current.resumeAt;
   if(autoRotate){const angle=-Math.min(delta,.05)*.21;camera.position.sub(orbit.target).applyAxisAngle(WORLD_UP,angle).add(orbit.target);camera.up.applyAxisAngle(WORLD_UP,angle);}
   sample.current+=delta;if(sample.current>.2){
    sample.current=0;gl.domElement.dataset.camera=camera.position.toArray().map(n=>n.toFixed(3)).join(",");gl.domElement.dataset.cameraUp=camera.up.toArray().map(n=>n.toFixed(3)).join(",");gl.domElement.dataset.zoom=camera.zoom.toFixed(2);gl.domElement.dataset.anchor=[cx,cy,width,height].map(n=>n.toFixed(1)).join(",");gl.domElement.dataset.autoRotate=String(autoRotate);
@@ -159,7 +163,7 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
       readyFrames.current++;
       if (readyFrames.current === 2) onReady(); else invalidate();
     }
-    sampleBreeze(elapsed.current,breeze.current);
+    if (active) elapsed.current += Math.min(delta, .05);
     if(desk.current)desk.current.visible=props.story.current.entry==='door'||!['coffee-enter','coffee-pickup','coffee-toast'].includes(props.story.current.phase);
     if(desk.current){const impact=props.story.current.pose.impact;desk.current.position.y=impact*.004;desk.current.rotation.z=Math.sin(props.story.current.elapsed*65)*impact*.004;}
     gl.domElement.dataset.pivot=compositionRef.current?.position.toArray().join(",")??"";
@@ -182,7 +186,6 @@ function Workspace({ active, dark, clock: elapsed, onReady, ...props }: ScenePro
     </group>
     <ContactShadows position={[0,0.001,0]} opacity={dark ? 0.3 : 0.22} scale={7} blur={3} far={3.2} resolution={256} frames={Infinity} color="#08080b" />
     </group></group>
-    <Atmosphere {...ambient} dark={dark} />
     <CameraControls anchor={props.anchor} coffeeAnchor={props.coffeeAnchor} interaction={props.interaction} active={active} controls={props.controls} story={props.story} reduced={props.reduced} />
   </>;
 }

@@ -10,7 +10,6 @@ import { viewFromHash, viewLabels, views, type View } from "@/lib/portfolio";
 import { WorkspaceStage } from "./workspace-stage";
 import { ViewContent } from "./view-content";
 import { PanelContinuation } from "./panel-continuation";
-import { ViewportAtmosphere } from "./viewport-atmosphere";
 import { SoundControls } from "./sound-controls";
 import { ScrollNavigation } from "./scroll-navigation";
 import { CoffeeEntry } from "./coffee-entry";
@@ -67,7 +66,6 @@ export function Studio() {
     {!introStarted&&!introComplete&&entry==='door'&&<DoorEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor}/>}
     {!introStarted&&!introComplete&&entry==='coffee'&&<CoffeeEntry onReady={()=>void start()} story={story} sceneAnchor={coffeeAnchor} sceneReady={sceneReady}/>}
     {<a className="skip-link" href="#main" onClick={event => { event.preventDefault(); skip(); content.current?.focus(); }}>Skip to content</a>}
-    <ViewportAtmosphere clock={clock} />
     <div className="app-shell" inert={!introStarted&&!introComplete}>
       <header className="app-header" inert={!introComplete}>
         <a href="#home" className="wordmark" aria-label="Cao-Toan Nguyen, Home"><Mark /><span>Cao-Toan Nguyen<span className="warm-dot">.</span></span></a>

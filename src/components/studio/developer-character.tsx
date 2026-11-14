@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Group, MathUtils, Vector3, Quaternion } from "three";
 import { advanceStory, type CharacterStory, type ActorPose } from "./character-story";
+import { SleepLetters } from "./sleep-letters";
 import { HelloBubble } from "./hello-bubble";
 import { playDeskThump, playFootstep, playHelloGreeting, playKnock, playPageSwoosh, playPaperRustle } from "@/lib/studio-audio";
 import { Coffee } from "./workspace-coffee";
@@ -87,12 +88,6 @@ const bodyParts:Voxel[]=[
  ...[0,1,2].map((i):Voxel=>[s*.16,.258-i*.014,-.46-i*.04,.13,.012,.018,"#fff2d7"]),
  [s*.295,.17,-.44,.014,.045,.12,sage]])
 ];
-const chairParts:Voxel[]=[
- [0,.82,.08,.7,.13,.61,"#bb825f"],[0,1.23,.29,.68,.72,.13,"#bb825f"],
- [0,1.25,.21,.57,.57,.05,"#d6a179"],[0,.45,.12,.09,.65,.09,"#4b5557"],
- [0,.09,.12,.78,.065,.075,"#465255"],[0,.09,.12,.075,.065,.72,"#465255"],
- ...[-1,1].flatMap((s):Voxel[]=>[[s*.34,1.05,.05,.07,.33,.07,"#465255"],[s*.34,1.2,-.02,.1,.055,.36,"#bb825f"],[s*.36,.055,.12,.09,.08,.13,"#303e43"],[0,.055,.12+s*.33,.13,.08,.09,"#303e43"]])
-];
 const handParts:Voxel[]=[[0,0,0,.13,.065,.13,skin],...Array.from({length:4},(_,i):Voxel=>[-.048+i*.032,-.006,-.1,.026,.046,.11,i%2?skin:light]),[.08,-.015,-.025,.045,.05,.08,shade]];
 const sleeve:Voxel[]=[[0,-.14,0,.22,.28,.23,sage],[0,-.265,0,.205,.04,.22,seam]];
 const forearm:Voxel[]=[[0,0,.14,.17,.17,.28,sage],[0,0,.29,.175,.15,.045,"#86a296"]];
@@ -128,7 +123,7 @@ function Arm({side,clock,pose,lift,body,coffeeHand}:{side:number;clock:RefObject
    const target=pose.coffeePlace>0?DESK_CUP:STATION_CUP;
    const yaw=body.current?.parent?.rotation.y??pose.yaw;
    const dx=target[0]-pose.x,dz=target[2]-pose.z,cos=Math.cos(yaw),sin=Math.sin(yaw);
-   v.bend.set(cos*dx-sin*dz,target[1]-stand*.38-.02,sin*dx+cos*dz+.08);
+   v.bend.set(cos*dx-sin*dz,target[1]-(stand*.38-.78*(1-stand))-.02,sin*dx+cos*dz+.08);
    v.bend.lerp(v.direction.set(.33,1.55+pose.coffeeToast*.25,-.38),pose.coffeeCarry);
    v.wrist.lerp(v.bend,pose.coffeeReach);
   }
@@ -138,6 +133,7 @@ function Arm({side,clock,pose,lift,body,coffeeHand}:{side:number;clock:RefObject
    const lift=pose.pullLift;
    v.wrist.lerp(v.bend.set(.85-lift*.6,1.55,-.12-lift*.3),pose.pullReach);
   }
+  if(pose.sleep>0)v.wrist.lerp(v.bend.set(side*.22,1.3,-.27),pose.sleep);
   if(pose.anger>0)v.wrist.lerp(v.bend.set(side*.48,(side===1?2.08:1.94)+Math.sin(t*9)*.025,side===1?-.18:-.32),pose.anger);
   // Knocking fist near the face, thrusting toward the door on each strike.
   if(side===1&&pose.knock>0)v.wrist.lerp(v.bend.set(.1,1.9+pose.knockImpact*.06,-.42-pose.knockImpact*.16),pose.knock);
@@ -169,11 +165,15 @@ function Leg({side,pose}:{side:number;pose:ActorPose}){
   if(!thigh.current||!shin.current||!shoe.current)return;
   const phase=((pose.gait/(Math.PI*2)+(side===1?.5:0))%1),swing=phase>.6?Math.sin((phase-.6)/.4*Math.PI):0;
   const stride=phase<.6?-.18+phase/.6*.36:.18-((phase-.6)/.4)*.36;
-  v.hip.set(side*.16,.95+pose.stand*.38-pose.walk*.025-pose.crouch*.16,pose.bonk*SCOOT);
+  v.hip.set(side*.16,.95+pose.stand*.38-.78*(1-pose.stand)-pose.walk*.025-pose.crouch*.16,pose.bonk*SCOOT);
   // Stance slides backward in actor coordinates as the root advances; swing lifts only on return.
   const adjust=MathUtils.smoothstep(pose.stand,side===1?.25:0,side===1?1:.75);
   v.ankle.set(side*.16,.2625+swing*.095*pose.walk+Math.sin(adjust*Math.PI)*.07*(1-pose.walk)+pose.tuck*.3,MathUtils.lerp(-.37,-.035,adjust)+stride*pose.walk+pose.tuck*.2);
-  v.bend.set(0,0,-1);solve(v.hip,v.ankle,.46,.62,v.bend,v.knee,v.direction);
+  const seated=1-pose.stand;
+  v.ankle.x=MathUtils.lerp(v.ankle.x,-side*.12,seated);
+  v.ankle.z=MathUtils.lerp(v.ankle.z,-.65,seated);
+  v.ankle.y=MathUtils.lerp(v.ankle.y,.24,seated);
+  v.bend.set(side*seated,.2*seated,-1+seated*.8);solve(v.hip,v.ankle,.46,.62,v.bend,v.knee,v.direction);
   thigh.current.position.copy(v.hip);v.direction.copy(v.knee).sub(v.hip);thigh.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
   shin.current.position.copy(v.knee);v.direction.copy(v.ankle).sub(v.knee);shin.current.quaternion.setFromUnitVectors(down,v.direction.normalize());
   shoe.current.position.copy(v.ankle);shoe.current.rotation.x=-swing*.12*pose.walk;
@@ -181,7 +181,7 @@ function Leg({side,pose}:{side:number;pose:ActorPose}){
  return <><group ref={thigh} scale={[side,1,1]}><VoxelParts parts={thighParts}/></group><group ref={shin} scale={[side,1,1]}><VoxelParts parts={shinParts}/></group><group ref={shoe} scale={[side,1,1]}><VoxelParts parts={shoeParts}/></group></>;
 }
 export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,running=true}:{clock:RefObject<number>;active:boolean;breeze:RefObject<Breeze>;story:RefObject<CharacterStory>;reduced:boolean;onRelease:()=>void;running?:boolean}) {
- const root=useRef<Group>(null),head=useRef<Group>(null),eyes=useRef<Group>(null),body=useRef<Group>(null),pelvis=useRef<Group>(null),chair=useRef<Group>(null),bubble=useRef<Group>(null),swear=useRef<Group>(null),coffeeHand=useRef<Group>(null);
+ const root=useRef<Group>(null),head=useRef<Group>(null),eyes=useRef<Group>(null),body=useRef<Group>(null),pelvis=useRef<Group>(null),bubble=useRef<Group>(null),swear=useRef<Group>(null),coffeeHand=useRef<Group>(null);
  const lift=useRef(0),reaction=useRef(-100),released=useRef(false),lastImpact=useRef(-1),helloOpacity=useRef(0),swearOpacity=useRef(0),corner=useRef(new Vector3());
  const cues=useRef({key:"",fired:new Set<string>(),knocks:0,step:0});
  const pose=story.current.pose;
@@ -245,10 +245,9 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
    if(state.phase==='pull-lift'&&mark('lift'))playPageSwoosh();
   }
   const c=state.time%24;lift.current=state.phase==='settle'&&!reduced?MathUtils.smoothstep(c,.15,.85)*(1-MathUtils.smoothstep(c,1.35,2.3)):state.phase==='work'?MathUtils.smoothstep(c,13.4,15.3)*(1-MathUtils.smoothstep(c,18,20)):0;
-  const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-p.walk*.025-p.crouch*.1;
+  const greet=Math.max(0,1-(t-reaction.current)/1.4),height=p.stand*.38-.78*(1-p.stand)-p.walk*.025-p.crouch*.1;
   if(greet>0){p.bubble=Math.max(p.bubble,Math.sin(greet*Math.PI));if(state.phase==='work'&&!reduced)p.wave=Math.max(p.wave,Math.sin(greet*Math.PI));}
-  if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,p.hop,p.z);const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
-  if(chair.current){chair.current.visible=state.entry==='door'||!['coffee-enter','coffee-pickup','coffee-toast'].includes(state.phase);chair.current.position.z=.64+p.chair*.55+p.bonk*SCOOT;}
+  if(root.current){root.current.visible=running||state.entry==='door';root.current.position.set(p.x,p.hop+.36*p.sleep,p.z);root.current.rotation.z=p.sleep*Math.PI/2;const angle=Math.atan2(Math.sin(p.yaw-root.current.rotation.y),Math.cos(p.yaw-root.current.rotation.y));root.current.rotation.y=running?root.current.rotation.y+angle*(1-Math.exp(-9*delta)):p.yaw;}
   if(pelvis.current)pelvis.current.position.set(0,height,p.bonk*SCOOT);
   if(head.current){
    const attention=p.pullReach;
@@ -274,14 +273,13 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
     body.current.position.y+=Math.max(0,correction);
    }
   }
-  const blink=t%4.7;if(eyes.current)eyes.current.scale.y=(1-MathUtils.smoothstep(blink,0,.075)*(1-MathUtils.smoothstep(blink,.105,.19))*.96)*(1-p.stare*.12);
+  const blink=t%4.7;if(eyes.current)eyes.current.scale.y=(1-MathUtils.smoothstep(blink,0,.075)*(1-MathUtils.smoothstep(blink,.105,.19))*.96)*(1-p.stare*.12)*(1-.96*p.sleep);
   helloOpacity.current=p.bubble;swearOpacity.current=p.swear;
   if(bubble.current){bubble.current.position.set(p.x,3.25+Math.sin(t*6)*.055,p.z);bubble.current.scale.setScalar(Math.max(.001,p.bubble));bubble.current.visible=p.bubble>.001;}
   if(swear.current){swear.current.position.set(p.x,2.92+Math.sin(t*7)*.045,p.z);swear.current.scale.setScalar(1+Math.sin(t*8)*.025);swear.current.visible=p.swear>.001;}
   gl.domElement.dataset.characterPhase=state.phase;gl.domElement.dataset.storyTime=state.time.toFixed(2);gl.domElement.dataset.storyElapsed=state.elapsed.toFixed(2);gl.domElement.dataset.reveal=state.reveal.toFixed(3);gl.domElement.dataset.bonk=p.bonk.toFixed(3);
  },-2.5);
  return <group name="voxel-developer">
-  <group ref={chair} position={[-.65,0,.64]}><VoxelParts parts={chairParts}/></group>
   <group ref={root} position={[-.65,0,.64]}>
    <group ref={pelvis}><VoxelParts parts={pelvisParts}/></group>
    <group ref={body} position={[0,HIP,0]}><group position={[0,-HIP,0]}>
@@ -292,6 +290,7 @@ export function DeveloperCharacter({clock,active,breeze,story,reduced,onRelease,
   </group>
   <group ref={bubble} visible={false}><HelloBubble opacity={helloOpacity}/></group>
   <group ref={swear} visible={false}><HelloBubble kind="frustrated" opacity={swearOpacity}/></group>
+  <SleepLetters story={story} head={head} active={active&&!reduced}/>
   <CarriedCoffee clock={clock} active={active} breeze={breeze} story={story} hand={coffeeHand} lift={lift}/>
  </group>;
 }
@@ -301,12 +300,13 @@ function CarriedCoffee({clock,active,breeze,story,hand,lift}:{clock:RefObject<nu
  useFrame(({gl})=>{
   if(!cup.current)return;
   const s=story.current,p=s.pose,atDesk=s.coffee.atDesk||s.phase==='coffee-place';
+  cup.current.visible=s.entry!=='door'||s.door.handoff>0||!s.phase.startsWith('door-');
   cup.current.position.fromArray(atDesk?DESK_CUP:STATION_CUP);
   if(hand.current&&p.coffeeGrip>0){
    point.current.set(0,.02,-.08);hand.current.localToWorld(point.current);cup.current.parent?.worldToLocal(point.current);
    cup.current.position.lerp(point.current,p.coffeeGrip);
   }else if(atDesk&&s.phase==='work'){
-   cup.current.position.set(-.65+MathUtils.lerp(.5,.13,lift.current),MathUtils.lerp(1.49,1.80,lift.current),.64+MathUtils.lerp(-.53,-.36,lift.current));
+   cup.current.position.set(-.65+MathUtils.lerp(.5,.13,lift.current),MathUtils.lerp(.71,1.02,lift.current),.64+MathUtils.lerp(-.53,-.36,lift.current));
   }
   cup.current.rotation.x=atDesk?lift.current*.25:0;
   gl.domElement.dataset.coffeeLocation=p.coffeeGrip>.99?'hand':atDesk?'desk':'machine';

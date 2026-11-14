@@ -1,11 +1,11 @@
 import type { EntryExperience } from "@/lib/entry-experience";
 
 /** One state machine owns the actor and page reveal; camera input is independent. */
-export type StoryPhase='door-idle'|'door-hop'|'door-walk-out'|'door-walk-front'|'door-knock'|'door-wait'|'door-open'|'door-exit'|'coffee-brew'|'coffee-enter'|'coffee-pickup'|'coffee-toast'|'coffee-return-front'|'coffee-return-side'|'coffee-place'|'coffee-sit'|'settle'|'stand'|'exit'|'approach'|'wave'|'return-front'|'return-side'|'sit'|'pull-reach'|'pull-lift'|'pull-release'|'work'|'stare'|'exclaim'|'hands-up'|'bonk'|'recover'|'frustrated'|'break-stand'|'wander-out'|'wander-front'|'calm'|'wander-back'|'wander-home'|'break-sit';
-export type ActorPose={coffeeReach:number;coffeeCarry:number;coffeeToast:number;coffeeGrip:number;coffeePlace:number;x:number;z:number;yaw:number;stand:number;gait:number;walk:number;wave:number;pullReach:number;pullLift:number;pullGrip:number;anger:number;stare:number;shake:number;bonk:number;impact:number;bubble:number;swear:number;chair:number;knock:number;knockImpact:number;push:number;hop:number;crouch:number;tuck:number;hopArms:number;follow:number};
+export type StoryPhase='lie-down'|'sleep'|'wake-up'|'door-idle'|'door-hop'|'door-walk-out'|'door-walk-front'|'door-knock'|'door-wait'|'door-open'|'door-exit'|'coffee-brew'|'coffee-enter'|'coffee-pickup'|'coffee-toast'|'coffee-return-front'|'coffee-return-side'|'coffee-place'|'coffee-sit'|'settle'|'stand'|'exit'|'approach'|'wave'|'return-front'|'return-side'|'sit'|'pull-reach'|'pull-lift'|'pull-release'|'work'|'stare'|'exclaim'|'hands-up'|'bonk'|'recover'|'frustrated'|'break-stand'|'wander-out'|'wander-front'|'calm'|'wander-back'|'wander-home'|'break-sit';
+export type ActorPose={sleep:number;coffeeReach:number;coffeeCarry:number;coffeeToast:number;coffeeGrip:number;coffeePlace:number;x:number;z:number;yaw:number;stand:number;gait:number;walk:number;wave:number;pullReach:number;pullLift:number;pullGrip:number;anger:number;stare:number;shake:number;bonk:number;impact:number;bubble:number;swear:number;chair:number;knock:number;knockImpact:number;push:number;hop:number;crouch:number;tuck:number;hopArms:number;follow:number};
 export type DoorState={progress:number;answered:boolean;opening:boolean;done:boolean;handoff:number;knocks:number;strike:number;impact:number;presence:number};
 export type CharacterStory={entry:EntryExperience;door:DoorState;coffee:{progress:number;brewing:boolean;atDesk:boolean};phase:StoryPhase;time:number;elapsed:number;cycle:number;greetingVisit:number;started:boolean;skipped:boolean;released:boolean;reveal:number;pose:ActorPose};
-export function createStory(entry:EntryExperience='coffee'):CharacterStory{return {entry,door:{progress:0,answered:false,opening:false,done:false,handoff:0,knocks:0,strike:0,impact:0,presence:0},coffee:{progress:0,brewing:false,atDesk:false},phase:entry==='door'?'door-idle':'coffee-enter',time:0,elapsed:0,cycle:0,greetingVisit:0,started:false,skipped:false,released:false,reveal:0,pose:{coffeeReach:0,coffeeCarry:0,coffeeToast:0,coffeeGrip:0,coffeePlace:0,x:entry==='door'?-.65:3.65,z:entry==='door'?.64:-1.85,yaw:entry==='door'?Math.PI/2:Math.PI/2,stand:entry==='door'?0:1,gait:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0,knock:0,knockImpact:0,push:0,hop:0,crouch:0,tuck:0,hopArms:0,follow:0}};}
+export function createStory(entry:EntryExperience='coffee'):CharacterStory{return {entry,door:{progress:0,answered:false,opening:false,done:false,handoff:0,knocks:0,strike:0,impact:0,presence:0},coffee:{progress:0,brewing:false,atDesk:false},phase:entry==='door'?'door-idle':'coffee-enter',time:0,elapsed:0,cycle:0,greetingVisit:0,started:false,skipped:false,released:false,reveal:0,pose:{sleep:0,coffeeReach:0,coffeeCarry:0,coffeeToast:0,coffeeGrip:0,coffeePlace:0,x:entry==='door'?-.65:3.65,z:entry==='door'?.64:-1.85,yaw:entry==='door'?Math.PI/2:Math.PI/2,stand:entry==='door'?0:1,gait:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0,knock:0,knockImpact:0,push:0,hop:0,crouch:0,tuck:0,hopArms:0,follow:0}};}
 export function restartStory(s:CharacterStory){
  const next=createStory(s.entry),pose=s.pose,greetingVisit=s.greetingVisit+1;
  // Arms and legs hold this pose object, so keep its identity across visits.
@@ -15,10 +15,10 @@ export const ease=(n:number)=>{const x=Math.max(0,Math.min(1,n));return x*x*(3-2
 const smoother=(n:number)=>{const x=Math.max(0,Math.min(1,n));return x*x*x*(x*(x*6-15)+10);};
 export function updateCoffee(s:{readonly current:CharacterStory},update:Partial<CharacterStory['coffee']>){Object.assign(s.current.coffee,update);}
 export function answerDoor(s:{readonly current:CharacterStory}){s.current.door.answered=true;}
-const sequence:StoryPhase[]=['coffee-enter','coffee-pickup','coffee-toast','coffee-return-front','coffee-return-side','coffee-place','coffee-sit','work','stare','exclaim','hands-up','bonk','recover','frustrated','break-stand','wander-out','wander-front','calm','wander-back','wander-home','break-sit'];
+const sequence:StoryPhase[]=['coffee-enter','coffee-pickup','coffee-toast','coffee-return-front','coffee-return-side','coffee-place','coffee-sit','work','lie-down','sleep','wake-up'];
 const doorLead:StoryPhase[]=['door-idle','door-hop','door-walk-out','door-walk-front','door-knock','door-wait','door-open','door-exit','coffee-enter','coffee-brew','coffee-pickup','coffee-return-front','coffee-return-side','coffee-place','exit','approach','wave','pull-reach','pull-lift','pull-release'];
 const doorSequence:StoryPhase[]=[...doorLead,'return-front','return-side','sit',...sequence.slice(7)];
-const duration:Record<StoryPhase,number>={'door-idle':.7,'door-hop':1.15,'door-walk-out':.7,'door-walk-front':.95,'door-knock':1.7,'door-wait':1.95,'door-open':1.75,'door-exit':1.1,'coffee-brew':2.2,'coffee-enter':1.35,'coffee-pickup':.95,'coffee-toast':1.1,'coffee-return-front':2,'coffee-return-side':1.65,'coffee-place':1.2,'coffee-sit':.8,settle:2.4,stand:1.3,exit:2.1,approach:1.85,wave:2.1,'return-front':1.85,'return-side':2.1,sit:1.2,'pull-reach':.9,'pull-lift':1.8,'pull-release':.95,work:24,stare:.9,exclaim:1.35,'hands-up':1.1,bonk:1.15,recover:1.65,frustrated:1.3,'break-stand':1.4,'wander-out':2.4,'wander-front':2.2,calm:2.4,'wander-back':2.2,'wander-home':2.4,'break-sit':1.4};
+const duration:Record<StoryPhase,number>={'lie-down':3.2,sleep:12,'wake-up':3.2,'door-idle':.7,'door-hop':1.15,'door-walk-out':.7,'door-walk-front':.95,'door-knock':1.7,'door-wait':1.95,'door-open':1.75,'door-exit':1.1,'coffee-brew':2.2,'coffee-enter':2.2,'coffee-pickup':.95,'coffee-toast':1.1,'coffee-return-front':3.2,'coffee-return-side':1.65,'coffee-place':1.2,'coffee-sit':.8,settle:2.4,stand:1.3,exit:2.1,approach:1.85,wave:2.1,'return-front':1.85,'return-side':2.1,sit:1.2,'pull-reach':.9,'pull-lift':1.8,'pull-release':.95,work:24,stare:.9,exclaim:1.35,'hands-up':1.1,bonk:1.15,recover:1.65,frustrated:1.3,'break-stand':1.4,'wander-out':2.4,'wander-front':2.2,calm:2.4,'wander-back':2.2,'wander-home':2.4,'break-sit':1.4};
  export function skipStory(s:CharacterStory){s.skipped=true;s.coffee.atDesk=true;s.coffee.progress=1;s.coffee.brewing=false;s.released=true;s.reveal=1;s.phase='work';s.time=0;s.started=true;if(s.entry==='door')Object.assign(s.door,{progress:1,answered:true,opening:true,done:true,handoff:1});}
 export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
  if(!s.started)s.started=true;
@@ -30,31 +30,32 @@ export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
  const answeredEarly=s.entry==='door'&&s.door.answered&&!s.door.opening&&(s.phase==='door-wait'||(s.phase==='door-knock'&&s.time>length*.5));
  if(s.time>=length||answeredEarly){
   s.time=answeredEarly?0:s.time-length;
-  if(s.phase==='break-sit'){s.phase='work';s.cycle++;}
+  if(s.phase==='wake-up'){s.phase='work';s.cycle++;}
   else if(s.phase==='work'&&reduced)s.time=0;
   else if(s.entry==='door'&&s.phase.startsWith('door-'))s.phase=nextDoorPhase(s);
   else {const timeline=s.entry==='door'?doorSequence:sequence;s.phase=timeline[timeline.indexOf(s.phase)+1]??'work';}
   length=s.phase==='work'?22+((s.cycle*7+3)%13):duration[s.phase];
  }
  const p=s.pose,u=ease(s.time/length);
- Object.assign(p,{coffeeReach:0,coffeeCarry:0,coffeeToast:0,coffeeGrip:0,coffeePlace:0,x:-.65,z:.64,yaw:0,stand:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0,knock:0,knockImpact:0,push:0,hop:0,crouch:0,tuck:0,hopArms:0,follow:0});
+ const greetingZ=s.entry==='door'?-3:-.94;
+ Object.assign(p,{sleep:0,coffeeReach:0,coffeeCarry:0,coffeeToast:0,coffeeGrip:0,coffeePlace:0,x:-.65,z:.64,yaw:0,stand:0,walk:0,wave:0,pullReach:0,pullLift:0,pullGrip:0,anger:0,stare:0,shake:0,bonk:0,impact:0,bubble:0,swear:0,chair:0,knock:0,knockImpact:0,push:0,hop:0,crouch:0,tuck:0,hopArms:0,follow:0});
  const walking=(x1:number,z1:number,x2:number,z2:number)=>{
   p.x=x1+(x2-x1)*u;p.z=z1+(z2-z1)*u;p.yaw=Math.atan2(-(x2-x1),-(z2-z1));p.stand=1;
   p.walk=ease(s.time/.25)*ease((length-s.time)/.25);
   p.gait+=Math.hypot(x2-x1,z2-z1)*6*(s.time/length)*(1-s.time/length)/length*dt*10.5;p.chair=1;
  };
- // A visitor waits outside: he hops off the chair, walks to the door, and knocks.
+ // A visitor waits outside: he rises from the floor, walks to the door, and knocks.
  if(s.entry==='door'&&s.phase.startsWith('door-'))doorBeat(s,reduced,length,u);
  // The IVL is collected before the camera follows the actor home.
- if(s.phase==='coffee-enter')walking(s.entry==='door'?1.1:3.65,s.entry==='door'?-.94:-1.85,1,-1.85);
+ if(s.phase==='coffee-enter')walking(s.entry==='door'?1.1:3.65,s.entry==='door'?-.94:-1.85,0,-3);
  if(s.phase==='coffee-brew'){
-  p.x=1;p.z=-1.85;p.yaw=-Math.PI/2;p.stand=1;p.chair=1;
+  p.x=0;p.z=-3;p.yaw=Math.PI/2;p.stand=1;p.chair=1;
   p.coffeeReach=ease(s.time/.35)*ease((length-s.time)/.35);
   s.coffee.progress=u;s.coffee.brewing=s.time<length-.1;
  }
  if(s.phase==='coffee-pickup')s.coffee.brewing=false;
  if(s.phase==='coffee-pickup'||s.phase==='coffee-toast'){
-  p.x=1;p.z=-1.85;p.yaw=-Math.PI/2;p.stand=1;p.chair=1;
+  p.x=0;p.z=-3;p.yaw=Math.PI/2;p.stand=1;p.chair=1;
   if(s.phase==='coffee-pickup'){
    p.coffeeReach=ease(s.time/.35);p.coffeeGrip=ease((s.time-.35)/.25);p.coffeeCarry=ease((s.time-.6)/.35);
   }else{
@@ -63,11 +64,15 @@ export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
    p.coffeeToast=ease(s.time/.3)*ease((length-s.time)/.3);p.bubble=p.coffeeToast;
   }
  }
- if(s.phase==='coffee-return-front')walking(1,-1.85,1.1,.72);
+ if(s.phase==='coffee-return-front'){
+  if(u<.3){const t=u/.3;p.x=1.1*t;p.z=-3;p.yaw=-Math.PI/2;}
+  else{const t=(u-.3)/.7;p.x=1.1;p.z=-3+3.72*t;p.yaw=Math.PI;}
+  p.stand=1;p.chair=1;p.walk=ease(s.time/.25)*ease((length-s.time)/.25);p.gait+=dt*8*p.walk;
+ }
  if(s.phase==='coffee-return-side')walking(1.1,.72,-.65,.64);
  if(s.phase==='coffee-return-front'||s.phase==='coffee-return-side'){p.coffeeReach=1;p.coffeeGrip=1;p.coffeeCarry=1;}
  if(s.phase==='coffee-place'){
-  p.stand=s.entry==='door'?1:1-.35*ease(s.time/.35);p.chair=1;p.coffeeReach=1;p.coffeePlace=ease(s.time/.6);p.coffeeCarry=1-p.coffeePlace;
+  p.stand=s.entry==='door'?1-.8*ease(s.time/.4)+.8*ease((s.time-.95)/.25):1-.35*ease(s.time/.35);p.chair=1;p.coffeeReach=1;p.coffeePlace=ease(s.time/.6);p.coffeeCarry=1-p.coffeePlace;
   p.coffeeGrip=1-ease((s.time-.85)/.25);
   if(s.time>=.85)s.coffee.atDesk=true;
  }
@@ -77,17 +82,19 @@ export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
  }
  if(s.phase==='stand'||s.phase==='break-stand'){p.stand=u;p.chair=u;}
  if(s.phase==='exit'||s.phase==='wander-out')walking(-.65,.64,1.10,.72);
- if(s.phase==='approach'||s.phase==='wander-front')walking(1.10,.72,1.10,-.94);
+ if(s.phase==='approach')walking(1.10,.72,1.10,greetingZ);
+ if(s.phase==='wander-front')walking(1.10,.72,1.10,-.94);
  if(s.phase==='wave'||s.phase==='calm'){
-  p.x=1.1;p.z=-.94;p.stand=1;p.chair=1;p.yaw=s.phase==='wave'?-.65:-.25;
+  p.x=1.1;p.z=s.phase==='wave'?greetingZ:-.94;p.stand=1;p.chair=1;p.yaw=s.phase==='wave'?-.65:-.25;
   if(s.phase==='wave'){p.wave=ease(s.time/.35)*ease((length-s.time)/.3);p.bubble=ease(s.time/.2)*ease((length-s.time)/.25);}
  }
- if(s.phase==='return-front'||s.phase==='wander-back')walking(1.10,-.94,1.10,.72);
+ if(s.phase==='return-front')walking(1.10,greetingZ,1.10,.72);
+ if(s.phase==='wander-back')walking(1.10,-.94,1.10,.72);
  if(s.phase==='return-side'||s.phase==='wander-home')walking(1.10,.72,-.65,.64);
  if(s.phase==='sit'||s.phase==='break-sit'){p.stand=1-u;p.chair=1-u;p.yaw=Math.PI/2*(1-u);}
  // Reach down, grasp the page edge, and lift it with the same progress as the wrist.
  if(s.phase.startsWith('pull-')){
-  p.x=1.1;p.z=-.94;p.yaw=-.65;p.stand=1;p.chair=1;
+  p.x=1.1;p.z=greetingZ;p.yaw=-.65;p.stand=1;p.chair=1;
   if(s.phase==='pull-reach'){
    p.pullReach=ease(s.time/.65);p.pullGrip=ease((s.time-.55)/.35);
   }else if(s.phase==='pull-lift'){
@@ -99,6 +106,12 @@ export function advanceStory(s:CharacterStory,dt:number,reduced:boolean){
   }
  }
  if(s.phase==='work'){s.reveal=1;s.released=true;}
+ if(s.phase==='lie-down'||s.phase==='sleep'||s.phase==='wake-up'){
+  p.sleep=s.phase==='lie-down'?u:s.phase==='wake-up'?1-u:1;
+  p.x=-.65-.9*ease(p.sleep/.4);p.z=.64-1.54*ease((p.sleep-.4)/.6);
+  p.stare=1;
+ }
+
  if(['stare','exclaim','hands-up','bonk','recover','frustrated'].includes(s.phase))p.stare=1;
  if(s.phase==='exclaim')p.swear=ease(s.time/.2);
  if(s.phase==='hands-up'){p.swear=1-ease((s.time-.2)/.65);p.anger=ease(s.time/.35);}
